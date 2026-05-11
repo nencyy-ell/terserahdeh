@@ -2,8 +2,9 @@
 /**
  * Vercel Serverless PHP Router
  * 
- * Security: Uses a strict whitelist approach instead of dynamic file resolution
- * to prevent path traversal and arbitrary file inclusion attacks.
+ * Security: Uses slug mapping + whitelist approach.
+ * URLs don't reveal actual PHP filenames, preventing
+ * path traversal and file structure enumeration attacks.
  */
 
 // ======================== SECURITY HEADERS ========================
@@ -14,15 +15,19 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://maps.google.com https://www.google.com;");
 
-// ======================== WHITELIST OF ALLOWED PAGES ========================
-// Only these pages can be accessed. Any other request falls back to index.
-$allowedPages = [
-    'index',
-    'kontak',
-    'produk',
-    'portofolio',
-    'tentang',
+// ======================== SLUG-TO-FILE MAPPING ========================
+// Public URL slug => actual PHP filename (without .php)
+// This hides real filenames from the URL bar.
+$slugMap = [
+    'beranda'  => 'index',
+    'profil'   => 'tentang',
+    'layanan'  => 'produk',
+    'proyek'   => 'portofolio',
+    'hubungi'  => 'kontak',
 ];
+
+// Direct page names for backward compatibility (old bookmarks still work)
+$allowedPages = ['index', 'kontak', 'produk', 'portofolio', 'tentang'];
 
 // ======================== ROUTE RESOLUTION ========================
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -37,9 +42,21 @@ if (empty($page) || $page === 'api') {
     $page = 'index';
 }
 
-// Only allow whitelisted pages — prevents path traversal attacks
-if (in_array($page, $allowedPages, true)) {
-    $filePath = __DIR__ . '/../' . $page . '.php';
+// Resolve: check slug map first, then fallback to direct names
+$actualPage = null;
+
+if (isset($slugMap[$page])) {
+    // Matched a clean slug (e.g., /profil -> tentang)
+    $actualPage = $slugMap[$page];
+} elseif (in_array($page, $allowedPages, true)) {
+    // Matched a direct filename for backward compatibility
+    $actualPage = $page;
+}
+
+if ($actualPage) {
+    // Set global variable so navbar can detect the active page
+    $GLOBALS['_current_page'] = $actualPage;
+    $filePath = __DIR__ . '/../' . $actualPage . '.php';
     if (file_exists($filePath)) {
         require $filePath;
         exit;
@@ -47,4 +64,5 @@ if (in_array($page, $allowedPages, true)) {
 }
 
 // Fallback: serve the homepage
+$GLOBALS['_current_page'] = 'index';
 require __DIR__ . '/../index.php';

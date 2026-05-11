@@ -31,21 +31,21 @@
       <div class="footer-col">
         <h4>Navigasi</h4>
         <ul>
-          <li><a href="index.php">Beranda</a></li>
-          <li><a href="tentang.php">Tentang Kami</a></li>
-          <li><a href="produk.php">Produk Kami</a></li>
-          <li><a href="portofolio.php">Portofolio</a></li>
-          <li><a href="kontak.php">Kontak</a></li>
+          <li><a href="/">Beranda</a></li>
+          <li><a href="/profil">Tentang Kami</a></li>
+          <li><a href="/layanan">Produk Kami</a></li>
+          <li><a href="/proyek">Portofolio</a></li>
+          <li><a href="/hubungi">Kontak</a></li>
         </ul>
       </div>
 
       <div class="footer-col">
         <h4>Produk</h4>
         <ul>
-          <li><a href="produk.php">Beton Ready Mix K-225</a></li>
-          <li><a href="produk.php">Beton Ready Mix K-300</a></li>
-          <li><a href="produk.php">Beton Ready Mix K-400</a></li>
-          <li><a href="produk.php">Beton Ready Mix K-500</a></li>
+          <li><a href="/layanan">Beton Ready Mix K-225</a></li>
+          <li><a href="/layanan">Beton Ready Mix K-300</a></li>
+          <li><a href="/layanan">Beton Ready Mix K-400</a></li>
+          <li><a href="/layanan">Beton Ready Mix K-500</a></li>
         </ul>
       </div>
 

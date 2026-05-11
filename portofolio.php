@@ -294,7 +294,7 @@
     <div class="cta-banner aos">
       <h2>Jadilah Bagian dari Portofolio Kami</h2>
       <p>Hubungi kami untuk mendiskusikan kebutuhan beton proyek Anda berikutnya.</p>
-      <a href="kontak.php" class="btn btn-primary">Hubungi Kami Sekarang →</a>
+      <a href="/hubungi" class="btn btn-primary">Hubungi Kami Sekarang →</a>
     </div>
   </div>
 </section>

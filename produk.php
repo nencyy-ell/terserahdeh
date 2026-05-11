@@ -209,7 +209,7 @@
         </div>
         <?php endforeach; ?>
         <div style="margin-top:1.5rem;">
-          <a href="kontak.php" class="btn btn-primary" style="width:100%; justify-content:center;">Minta Penawaran Harga</a>
+          <a href="/hubungi" class="btn btn-primary" style="width:100%; justify-content:center;">Minta Penawaran Harga</a>
         </div>
       </div>
       <?php endif; ?>
@@ -243,7 +243,7 @@
         </div>
         <?php endforeach; ?>
         <div style="margin-top:1.5rem;">
-          <a href="kontak.php" class="btn btn-primary" style="width:100%; justify-content:center;">Minta Penawaran Harga</a>
+          <a href="/hubungi" class="btn btn-primary" style="width:100%; justify-content:center;">Minta Penawaran Harga</a>
         </div>
       </div>
       <?php endif; ?>
@@ -289,7 +289,7 @@
     <div class="cta-banner aos">
       <h2>Butuh Konsultasi Terkait Beton?</h2>
       <p>Tim ahli kami siap membantu Anda memilih grade beton yang tepat untuk proyek Anda.</p>
-      <a href="kontak.php" class="btn btn-primary">Konsultasi Sekarang →</a>
+      <a href="/hubungi" class="btn btn-primary">Konsultasi Sekarang →</a>
     </div>
   </div>
 </section>
