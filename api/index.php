@@ -1,12 +1,4 @@
 <?php
-/**
- * Vercel Serverless PHP Router
- * 
- * Security: Uses slug mapping + whitelist approach.
- * URLs don't reveal actual PHP filenames, preventing
- * path traversal and file structure enumeration attacks.
- */
-
 // ======================== SECURITY HEADERS ========================
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
@@ -16,8 +8,6 @@ header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; frame-src https://maps.google.com https://www.google.com;");
 
 // ======================== SLUG-TO-FILE MAPPING ========================
-// Public URL slug => actual PHP filename (without .php)
-// This hides real filenames from the URL bar.
 $slugMap = [
     'beranda'  => 'index',
     'profil'   => 'tentang',

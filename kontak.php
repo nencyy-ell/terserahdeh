@@ -114,9 +114,19 @@
       <label for="grade">Grade Beton</label>
       <select id="grade" class="form-control">
         <option value="">-- Pilih Grade --</option>
+        <option>BO</option>
+        <option>K-125</option>
+        <option>K-150</option>
+        <option>K-175</option>
+        <option>K-200</option>
         <option>K-225</option>
+        <option>K-250</option>
+        <option>K-275</option>
         <option>K-300</option>
+        <option>K-350</option>
         <option>K-400</option>
+        <option>K-450</option>
+        <option>K-475</option>
         <option>K-500</option>
         <option>Belum tahu / perlu konsultasi</option>
       </select>
