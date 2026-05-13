@@ -164,10 +164,6 @@
   <div class="hero-bg-pattern"></div>
   <div class="hero-grid-overlay"></div>
   <div class="hero-content hero-centered">
-    <div class="hero-badge">
-      <span class="hero-badge-dot"></span>
-      Terpercaya Sejak 2022 · Jawa Timur
-    </div>
     <h1 class="hero-title">
       Solusi Beton <span>Ready Mix</span><br>
       Terbaik Anda
