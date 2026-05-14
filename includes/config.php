@@ -4,7 +4,7 @@
 // =============================================
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
-define('DB_PASS', 'nenci123');
+define('DB_PASS', '');
 define('DB_NAME', 'prambanan_beton');
 
 // =============================================
