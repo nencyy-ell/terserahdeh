@@ -44,6 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             VALUES ('{$data['nama_marketing']}','{$data['nama_kontraktor']}','{$data['nama_proyek']}','{$data['alamat_proyek']}','{$data['jenis_proyek']}','{$data['status_proyek']}',{$data['estimasi_volume']},'{$data['contact_person']}','{$data['wilayah']}','{$data['jenis_aktivitas']}','{$data['jam_mulai']}','{$data['jam_selesai']}',{$data['lat']},{$data['lng']},'{$data['hasil_promosi']}','{$data['tanggal']}', '$nama_file_foto')";
 
     if ($conn->query($sql)) {
+        // Log aktivitas
+        $action = "Mengirim laporan marketing proyek: " . $data['nama_proyek'];
+        $stmt_log = $conn->prepare("INSERT INTO activity_logs (admin_id, admin_name, action) VALUES (?,?,?)");
+        $stmt_log->bind_param("iss", $_SESSION['admin_id'], $_SESSION['admin_name'], $action);
+        $stmt_log->execute();
+        $stmt_log->close();
+
         if ($_SESSION['admin_role'] === 'marketing') {
             redirect('/marketing/form.php?saved=1');
         } else {

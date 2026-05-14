@@ -298,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="checkbox" id="showPass">
                         <span>Tampilkan Password</span>
                     </label>
-                    <a href="#" class="forgot-link">Lupa Password?</a>
+                    <a href="forgot-password.php" class="forgot-link">Lupa Password?</a>
                 </div>
 
                 <button type="submit" class="btn-login">Login Sekarang</button>

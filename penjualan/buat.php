@@ -19,6 +19,35 @@ while($p = $products->fetch_assoc()) {
     $prod_data[] = $p;
 }
 
+// Ambil komposisi semua produk untuk JS
+$comp_raw = $conn->query("
+    SELECT p.kode, m.nama as mat_nama, m.satuan, pc.jumlah_per_m3
+    FROM product_compositions pc
+    JOIN products p ON pc.product_id = p.id
+    JOIN materials m ON pc.material_id = m.id
+    WHERE p.is_active = 1
+");
+$compositions = [];
+while ($c = $comp_raw->fetch_assoc()) {
+    $compositions[$c['kode']][] = [
+        'nama' => $c['mat_nama'],
+        'satuan' => $c['satuan'],
+        'per_m3' => $c['jumlah_per_m3']
+    ];
+}
+
+// LOGIKA AUTO-FILL DARI MARKETING (Jika ada report_id)
+$preset_pelanggan = '';
+$preset_proyek = '';
+if (isset($_GET['report_id'])) {
+    $report_id = (int)$_GET['report_id'];
+    $report = $conn->query("SELECT nama_kontraktor, nama_proyek FROM marketing_reports WHERE id = $report_id")->fetch_assoc();
+    if ($report) {
+        $preset_pelanggan = $report['nama_kontraktor'];
+        $preset_proyek = $report['nama_proyek'];
+    }
+}
+
 // Cek stok material rendah
 $low_stock = $conn->query("SELECT nama, stok_tersedia, satuan, stok_minimum FROM materials WHERE stok_tersedia <= stok_minimum OR stok_tersedia <= 0");
 $low_stock_list = [];
@@ -42,7 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $total = floatval($_POST['total_hidden']);
         $dp = floatval($_POST['uang_muka'] ?? 0);
         $sisa = $total - $dp;
-        $status = $dp >= $total ? 'Lunas' : ($dp > 0 ? 'DP 50%' : 'Pending');
+        $pct = ($total > 0) ? ($dp / $total) * 100 : 0;
+        $status = $dp >= $total ? 'Lunas' : ($dp > 0 ? 'DP ' . round($pct) . '%' : 'Pending');
         $admin_id = $_SESSION['admin_id'];
 
         // Calculate summary for main table (compatibility)
@@ -62,8 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $types_str = substr(implode(", ", array_unique($beton_types)), 0, 20); // Table has limit of 20 chars
 
         // 1. Insert Pesanan
-        $stmt = $conn->prepare("INSERT INTO pesanan (no_invoice, nama_pelanggan, nama_proyek, tipe_beton, volume, harga_per_m3, subtotal, ppn_aktif, ppn_persen, ppn_nominal, total_tagihan, uang_muka, total_terbayar, sisa_tagihan, status, tanggal, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param("ssssdddiddddddssi", $no, $pel, $pro, $types_str, $total_vol, $first_price, $subtotal, $ppn_aktif, $ppn_persen, $ppn_nominal, $total, $dp, $dp, $sisa, $status, $tgl, $admin_id);
+        $report_id_val = isset($_GET['report_id']) ? (int)$_GET['report_id'] : null;
+        $stmt = $conn->prepare("INSERT INTO pesanan (no_invoice, nama_pelanggan, nama_proyek, tipe_beton, volume, harga_per_m3, subtotal, ppn_aktif, ppn_persen, ppn_nominal, total_tagihan, uang_muka, total_terbayar, sisa_tagihan, status, tanggal, created_by, marketing_report_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        $stmt->bind_param("ssssdddiddddddssii", $no, $pel, $pro, $types_str, $total_vol, $first_price, $subtotal, $ppn_aktif, $ppn_persen, $ppn_nominal, $total, $dp, $dp, $sisa, $status, $tgl, $admin_id, $report_id_val);
         
         if (!$stmt->execute()) {
             throw new Exception($stmt->error);
@@ -81,6 +112,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($vol > 0) {
                 $item_stmt->bind_param("isddd", $pesanan_id, $kode, $vol, $hrg, $sub);
                 $item_stmt->execute();
+            }
+        }
+
+        // 3. KURANGI STOK MATERIAL LANGSUNG (BERDASARKAN KOMPOSISI)
+        $mat_update_stmt = $conn->prepare("UPDATE materials SET stok_tersedia = stok_tersedia - ? WHERE id = ?");
+        $mat_log_stmt    = $conn->prepare("INSERT INTO permintaan_material (material_id, jumlah, diminta_oleh, status, tanggal, pesanan_id) VALUES (?,?,'Produksi (Otomatis)','Selesai',CURDATE(),?)");
+
+        foreach ($items as $item) {
+            $kode = sanitize($conn, $item['kode']);
+            $vol  = floatval($item['volume']);
+            if ($vol > 0) {
+                $p_res = $conn->query("SELECT id FROM products WHERE kode='$kode'")->fetch_assoc();
+                if ($p_res) {
+                    $pid   = $p_res['id'];
+                    $comps = $conn->query("SELECT material_id, jumlah_per_m3 FROM product_compositions WHERE product_id=$pid");
+                    while ($c = $comps->fetch_assoc()) {
+                        $total_req = $c['jumlah_per_m3'] * $vol;
+                        $mid = $c['material_id'];
+                        $mat_update_stmt->bind_param("di", $total_req, $mid);
+                        $mat_update_stmt->execute();
+                        $mat_log_stmt->bind_param("idi", $mid, $total_req, $pesanan_id);
+                        $mat_log_stmt->execute();
+                    }
+                }
             }
         }
 
@@ -174,11 +229,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="form-grid">
                             <div class="form-group">
                                 <label>Pelanggan</label>
-                                <input type="text" name="nama_pelanggan" placeholder="Nama Pelanggan" required>
+                                <input type="text" name="nama_pelanggan" value="<?= htmlspecialchars($preset_pelanggan) ?>" placeholder="Nama Pelanggan" required>
                             </div>
                             <div class="form-group">
                                 <label>Proyek</label>
-                                <input type="text" name="nama_proyek" placeholder="Nama Proyek" required>
+                                <input type="text" name="nama_proyek" value="<?= htmlspecialchars($preset_proyek) ?>" placeholder="Nama Proyek" required>
                             </div>
                         </div>
 
@@ -207,7 +262,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                     <?php endforeach; ?>
                                                 </select>
                                             </td>
-                                            <td><input type="number" name="items[0][volume]" class="val-vol" value="0" min="0" step="0.01" oninput="calculate()"></td>
+                                            <td><input type="number" name="items[0][volume]" class="val-vol" value="0" min="0" step="0.01" oninput="calculate(); updateKomposisi();"></td>
                                             <td><input type="number" name="items[0][harga]" class="val-harga" value="0" oninput="calculate()"></td>
                                             <td><input type="text" class="val-subtotal" value="Rp 0" readonly style="background:#f8fafc; font-weight:700;"></td>
                                             <td><i class="fas fa-trash btn-remove" onclick="removeRow(this)"></i></td>
@@ -217,10 +272,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                             <button type="button" class="btn-add-row" onclick="addRow()"><i class="fas fa-plus"></i> Tambah Item</button>
                         </div>
+
+                        <!-- PREVIEW KOMPOSISI MATERIAL -->
+                        <div id="komposisiPanel" style="display:none; margin-top:20px; border:1px solid #d1fae5; border-radius:10px; overflow:hidden;">
+                            <div style="background:#ecfdf5; padding:12px 16px; border-bottom:1px solid #d1fae5;">
+                                <h4 style="margin:0; color:#065f46; font-size:14px;"><i class="fas fa-flask"></i> Kebutuhan Material (estimasi berdasarkan komposisi)</h4>
+                            </div>
+                            <div style="padding:16px;">
+                                <table style="width:100%; font-size:13px; border-collapse:collapse;">
+                                    <thead>
+                                        <tr style="border-bottom:1px solid #e2e8f0; color:#64748b;">
+                                            <th style="text-align:left; padding:6px 8px;">Material</th>
+                                            <th style="text-align:right; padding:6px 8px;">Kebutuhan Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="komposisiBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
-
-                <!-- KANAN: RINGKASAN -->
                 <div class="card" style="padding:24px; position:sticky; top:100px; background:#fff;">
                     <h3 style="font-size:16px; margin-bottom:20px;">Ringkasan Biaya</h3>
                     
@@ -277,6 +350,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>
 let rowCount = 1;
 
+// Komposisi dari PHP
+const compositionData = <?= json_encode($compositions, JSON_UNESCAPED_UNICODE) ?>;
+
 function addRow() {
     const table = document.getElementById('itemRows');
     const newRow = document.createElement('tr');
@@ -291,7 +367,7 @@ function addRow() {
                 <?php endforeach; ?>
             </select>
         </td>
-        <td><input type="number" name="items[${rowCount}][volume]" class="val-vol" value="0" min="0" step="0.01" oninput="calculate()"></td>
+        <td><input type="number" name="items[${rowCount}][volume]" class="val-vol" value="0" min="0" step="0.01" oninput="calculate(); updateKomposisi();"></td>
         <td><input type="number" name="items[${rowCount}][harga]" class="val-harga" value="0" oninput="calculate()"></td>
         <td><input type="text" class="val-subtotal" value="Rp 0" readonly style="background:#f8fafc; font-weight:700;"></td>
         <td><i class="fas fa-trash btn-remove" onclick="removeRow(this)"></i></td>
@@ -322,6 +398,44 @@ function updateRow(sel) {
     const harga = sel.options[sel.selectedIndex].dataset.harga || 0;
     row.querySelector('.val-harga').value = harga;
     calculate();
+    updateKomposisi();
+}
+
+function updateKomposisi() {
+    // Hitung total kebutuhan material dari semua baris
+    const totals = {};
+    document.querySelectorAll('.row-item').forEach(row => {
+        const sel = row.querySelector('.select-prod');
+        const kode = sel.value;
+        const vol = parseFloat(row.querySelector('.val-vol').value) || 0;
+        if (!kode || vol <= 0) return;
+        const comps = compositionData[kode] || [];
+        comps.forEach(c => {
+            const key = c.nama + '|' + c.satuan;
+            totals[key] = (totals[key] || 0) + (c.per_m3 * vol);
+        });
+    });
+
+    const panel = document.getElementById('komposisiPanel');
+    const body = document.getElementById('komposisiBody');
+    body.innerHTML = '';
+
+    const keys = Object.keys(totals);
+    if (keys.length === 0) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    panel.style.display = 'block';
+    keys.forEach(key => {
+        const [nama, satuan] = key.split('|');
+        const qty = totals[key];
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #f1f5f9';
+        tr.innerHTML = `<td style="padding:6px 8px; font-weight:600;">${nama}</td>
+                        <td style="text-align:right; padding:6px 8px; color:#065f46; font-weight:700;">${qty.toFixed(2)} ${satuan}</td>`;
+        body.appendChild(tr);
+    });
 }
 
 function formatRp(n) {

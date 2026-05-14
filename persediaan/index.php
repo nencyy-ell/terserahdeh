@@ -6,21 +6,34 @@ $currentPage = 'persediaan';
 
 $msg = '';
 
-// Update stok
+// Tentukan hak edit DULU sebelum semua logika aksi
+$can_edit = in_array($_SESSION['admin_role'], ['gudang', 'superadmin']);
+
+// Update stok (Hanya Gudang & Superadmin)
 if (isset($_POST['update_stok'])) {
+    if (!$can_edit) {
+        die("Akses ditolak!");
+    }
     foreach ($_POST['stok'] as $id => $val) {
         $id = (int)$id;
         $stok = floatval($val);
         $harga = floatval($_POST['harga'][$id] ?? 0);
         $conn->query("UPDATE materials SET stok_tersedia=$stok, harga_terakhir=$harga WHERE id=$id");
+        
+        // Log aktivitas
+        $m_info = $conn->query("SELECT nama FROM materials WHERE id=$id")->fetch_assoc();
+        $action = "Update stok material: " . $m_info['nama'] . " menjadi $stok";
+        $stmt_log = $conn->prepare("INSERT INTO activity_logs (admin_id, admin_name, action) VALUES (?,?,?)");
+        $stmt_log->bind_param("iss", $_SESSION['admin_id'], $_SESSION['admin_name'], $action);
+        $stmt_log->execute();
+        $stmt_log->close();
     }
     $msg = 'Stok berhasil diupdate!';
 }
 
 // Tambah material baru
 if (isset($_POST['tambah_material'])) {
-    // Restrict to gudang only
-    if ($_SESSION['admin_role'] !== 'gudang') {
+    if (!$can_edit) {
         die("Akses ditolak!");
     }
     $nama   = sanitize($conn, $_POST['nama_material']);
@@ -30,12 +43,53 @@ if (isset($_POST['tambah_material'])) {
     $harga  = floatval($_POST['harga_awal']);
     if ($nama && $satuan) {
         $conn->query("INSERT INTO materials (nama,satuan,stok_tersedia,stok_minimum,harga_terakhir) VALUES ('$nama','$satuan',$stok,$min,$harga)");
+        
+        // Log aktivitas
+        $action = "Menambah material baru: $nama";
+        $stmt_log = $conn->prepare("INSERT INTO activity_logs (admin_id, admin_name, action) VALUES (?,?,?)");
+        $stmt_log->bind_param("iss", $_SESSION['admin_id'], $_SESSION['admin_name'], $action);
+        $stmt_log->execute();
+        $stmt_log->close();
+
         $msg = 'Material berhasil ditambahkan!';
     }
 }
 
+// Proses Permintaan Material (Setujui / Tolak) — hanya untuk yang manual/lama (status Pending)
+if (isset($_GET['aksi_permintaan']) && $can_edit) {
+    $id_req = (int)$_GET['id_req'];
+    $aksi = $_GET['aksi_permintaan'];
+    
+    $req = $conn->query("SELECT * FROM permintaan_material WHERE id=$id_req")->fetch_assoc();
+    if ($req && $req['status'] === 'Pending') {
+        if ($aksi === 'setujui') {
+            $m_id = $req['material_id'];
+            $qty = $req['jumlah'];
+            
+            // Kurangi stok
+            $conn->query("UPDATE materials SET stok_tersedia = stok_tersedia - $qty WHERE id = $m_id");
+            $conn->query("UPDATE permintaan_material SET status = 'Selesai' WHERE id = $id_req");
+            
+            // Log
+            $m_info = $conn->query("SELECT nama FROM materials WHERE id=$m_id")->fetch_assoc();
+            $action = "Menyetujui permintaan material: {$m_info['nama']} sebanyak $qty (Oleh {$req['diminta_oleh']})";
+            $stmt_log = $conn->prepare("INSERT INTO activity_logs (admin_id, admin_name, action) VALUES (?,?,?)");
+            $stmt_log->bind_param("iss", $_SESSION['admin_id'], $_SESSION['admin_name'], $action);
+            $stmt_log->execute();
+            $msg = "Permintaan material disetujui dan stok telah dikurangi.";
+        } elseif ($aksi === 'tolak') {
+            $conn->query("UPDATE permintaan_material SET status = 'Ditolak' WHERE id = $id_req");
+            $msg = "Permintaan material ditolak.";
+        }
+    }
+}
+
 $materials = $conn->query("SELECT * FROM materials ORDER BY id");
-$permintaan = $conn->query("SELECT pm.*, m.nama as nama_material, m.satuan FROM permintaan_material pm JOIN materials m ON pm.material_id=m.id ORDER BY pm.tanggal DESC LIMIT 10");
+$permintaan = $conn->query("SELECT pm.*, m.nama as nama_material, m.satuan, p.no_invoice 
+                            FROM permintaan_material pm 
+                            JOIN materials m ON pm.material_id=m.id 
+                            LEFT JOIN pesanan p ON pm.pesanan_id=p.id
+                            ORDER BY pm.tanggal DESC LIMIT 20");
 
 // Summary
 $total_mat   = $conn->query("SELECT COUNT(*) as c FROM materials")->fetch_assoc()['c'] ?? 0;
@@ -92,7 +146,8 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
         <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                 <h3 style="margin-bottom:0;">Daftar Material &amp; Stok</h3>
-                <?php if ($_SESSION['admin_role'] === 'gudang'): ?>
+                <?php 
+                if ($can_edit): ?>
                 <button onclick="document.getElementById('modalTambah').classList.add('open')" class="btn btn-green btn-sm">
                     <i class="fas fa-plus"></i> Tambah Material
                 </button>
@@ -118,14 +173,22 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
                             <tr>
                                 <td><strong><?= htmlspecialchars($m['nama']) ?></strong></td>
                                 <td>
-                                    <input type="number" name="stok[<?= $m['id'] ?>]" value="<?= $m['stok_tersedia'] ?>"
-                                        style="width:90px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
-                                    m3
+                                    <?php if ($can_edit): ?>
+                                        <input type="number" name="stok[<?= $m['id'] ?>]" value="<?= $m['stok_tersedia'] ?>"
+                                            style="width:90px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
+                                    <?php else: ?>
+                                        <span style="font-weight:600;"><?= $m['stok_tersedia'] ?></span>
+                                    <?php endif; ?>
+                                    <?= htmlspecialchars($m['satuan']) ?>
                                 </td>
-                                <td><?= $m['stok_minimum'] ?> m3</td>
+                                <td><?= $m['stok_minimum'] ?> <?= htmlspecialchars($m['satuan']) ?></td>
                                 <td>
-                                    <input type="number" name="harga[<?= $m['id'] ?>]" value="<?= $m['harga_terakhir'] ?>"
-                                        style="width:120px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
+                                    <?php if ($can_edit): ?>
+                                        <input type="number" name="harga[<?= $m['id'] ?>]" value="<?= $m['harga_terakhir'] ?>"
+                                            style="width:120px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px;">
+                                    <?php else: ?>
+                                        <span><?= formatRupiah($m['harga_terakhir']) ?></span>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php if ($is_rendah): ?>
@@ -139,11 +202,13 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
                         </tbody>
                     </table>
                 </div>
+                <?php if ($can_edit): ?>
                 <div style="margin-top:16px;text-align:right;">
                     <button type="submit" name="update_stok" class="btn btn-green">
                         <i class="fas fa-save"></i> Simpan Perubahan
                     </button>
                 </div>
+                <?php endif; ?>
             </form>
         </div>
 
@@ -153,19 +218,24 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
             <div class="table-wrap">
                 <table>
                     <thead>
-                        <tr><th>Material</th><th>Jumlah</th><th>Diminta Oleh</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr>
+                        <tr><th>Material</th><th>Jumlah</th><th>Diminta Oleh</th><th>Ref. Invoice</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr>
                     </thead>
                     <tbody>
                         <?php if ($permintaan && $permintaan->num_rows > 0):
                             while ($pm = $permintaan->fetch_assoc()): ?>
                         <tr>
                             <td><?= htmlspecialchars($pm['nama_material']) ?></td>
-                            <td><?= $pm['jumlah'] ?> m3</td>
+                            <td><?= number_format($pm['jumlah'], 2) ?> <?= htmlspecialchars($pm['satuan']) ?></td>
                             <td><?= htmlspecialchars($pm['diminta_oleh']) ?></td>
+                            <td><small><?= $pm['no_invoice'] ? '<strong>'.$pm['no_invoice'].'</strong>' : '-' ?></small></td>
                             <td><?= date('d/m/Y', strtotime($pm['tanggal'])) ?></td>
-                            <td><span class="badge badge-<?= strtolower($pm['status']) === 'pending' ? 'pending' : 'aman' ?>"><?= $pm['status'] ?></span></td>
+                            <td><span class="badge badge-<?= strtolower($pm['status']) === 'pending' ? 'pending' : (strtolower($pm['status']) === 'ditolak' ? 'rendah' : 'aman') ?>"><?= $pm['status'] ?></span></td>
                             <td style="white-space:nowrap;">
                                 <a href="cetak.php?id=<?= $pm['id'] ?>" class="btn btn-sm btn-outline btn-icon" title="Cetak Bukti" target="_blank">🖨</a>
+                                <?php if ($can_edit && $pm['status'] === 'Pending'): ?>
+                                <a href="index.php?aksi_permintaan=setujui&id_req=<?= $pm['id'] ?>" class="btn btn-sm btn-green" style="padding:4px 8px; font-size:11px;" onclick="return confirm('Setujui permintaan ini? Stok akan otomatis berkurang.')">Setujui</a>
+                                <a href="index.php?aksi_permintaan=tolak&id_req=<?= $pm['id'] ?>" class="btn btn-sm btn-danger" style="padding:4px 8px; font-size:11px;" onclick="return confirm('Tolak permintaan ini?')">Tolak</a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endwhile;
@@ -179,7 +249,7 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
     </main>
 </div>
 
-<?php if ($_SESSION['admin_role'] === 'gudang'): ?>
+<?php if ($can_edit): ?>
 <!-- MODAL TAMBAH MATERIAL -->
 <div class="modal-backdrop" id="modalTambah" onclick="if(event.target===this)this.classList.remove('open')">
     <div class="modal">
@@ -193,7 +263,12 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
             <div class="form-grid">
                 <div class="form-group">
                     <label>Satuan</label>
-                    <input type="text" name="satuan" placeholder="ton / m&sup3; / liter" required>
+                    <select name="satuan" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
+                        <option value="">-- Pilih Satuan --</option>
+                        <option value="T">T</option>
+                        <option value="m³">m³</option>
+                        <option value="L">L</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Stok Awal</label>

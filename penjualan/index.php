@@ -4,10 +4,24 @@ requireLogin();
 requireRoleAccess('penjualan');
 $currentPage = 'penjualan';
 
-// Hapus pesanan
+// Hapus pesanan (Hanya Super Admin)
 if (isset($_GET['hapus'])) {
+    if ($_SESSION['admin_role'] !== 'superadmin') {
+        $_SESSION['error_msg'] = "Akses ditolak! Hanya Super Admin yang dapat menghapus data penjualan.";
+        redirect('/penjualan/index.php');
+    }
+    
     $id = (int)$_GET['hapus'];
+    $p_info = $conn->query("SELECT no_invoice FROM pesanan WHERE id=$id")->fetch_assoc();
     $conn->query("DELETE FROM pesanan WHERE id=$id");
+    
+    // Log aktivitas
+    $action = "Menghapus pesanan #" . ($p_info['no_invoice'] ?? 'ID '.$id);
+    $stmt_log = $conn->prepare("INSERT INTO activity_logs (admin_id, admin_name, action) VALUES (?,?,?)");
+    $stmt_log->bind_param("iss", $_SESSION['admin_id'], $_SESSION['admin_name'], $action);
+    $stmt_log->execute();
+    $stmt_log->close();
+
     redirect('/penjualan/index.php?deleted=1');
 }
 
@@ -32,6 +46,14 @@ $total_nilai   = $conn->query("SELECT SUM(total_tagihan) as t FROM pesanan")->fe
 
     <main class="main-content">
         <?php include '../includes/navbar.php'; ?>
+        
+        <?php if (isset($_SESSION['error_msg'])): ?>
+            <div class="alert alert-error" style="background:#fef2f2; color:#b91c1c; border:1px solid #fee2e2; padding:12px; border-radius:8px; margin-bottom:20px;">
+                <i class="fas fa-exclamation-circle"></i> <?= $_SESSION['error_msg'] ?>
+            </div>
+            <?php unset($_SESSION['error_msg']); ?>
+        <?php endif; ?>
+
         <?php if (isset($_GET['deleted'])): ?>
         <div class="alert alert-success">✅ Pesanan berhasil dihapus.</div>
         <?php endif; ?>
@@ -95,15 +117,19 @@ $total_nilai   = $conn->query("SELECT SUM(total_tagihan) as t FROM pesanan")->fe
                             <td><?= formatRupiah($p['total_tagihan']) ?></td>
                             <td>
                                 <?php
-                                $badge = ['Lunas'=>'badge-lunas','DP 50%'=>'badge-dp','Pending'=>'badge-pending'];
-                                $cls = $badge[$p['status']] ?? 'badge-pending';
+                                $status_val = $p['status'];
+                                $cls = 'badge-pending';
+                                if ($status_val === 'Lunas') $cls = 'badge-lunas';
+                                elseif (strpos($status_val, 'DP') !== false) $cls = 'badge-dp';
                                 ?>
-                                <span class="badge <?= $cls ?>"><?= $p['status'] ?></span>
+                                <span class="badge <?= $cls ?>"><?= $status_val ?></span>
                             </td>
                             <td><?= date('d/m/Y', strtotime($p['tanggal'])) ?></td>
                             <td style="white-space:nowrap;">
-                                <a href="invoice.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline btn-icon" title="Lihat Invoice">👁</a>
+                                <a href="invoice.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-outline btn-icon" title="Cetak Invoice" target="_blank">🖨</a>
+                                <?php if ($_SESSION['admin_role'] === 'superadmin'): ?>
                                 <a href="index.php?hapus=<?= $p['id'] ?>" class="btn btn-sm btn-danger btn-icon" title="Hapus" onclick="return confirm('Hapus pesanan ini?')">🗑</a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endwhile;

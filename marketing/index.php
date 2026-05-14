@@ -27,14 +27,11 @@ $lead_baru = $conn->query("SELECT COUNT(*) as c FROM marketing_reports WHERE sta
             position: fixed; 
             z-index: 9999; 
             top: 0; 
-            left: 260px; 
-            left: var(--sidebar-w);
-            width: calc(100% - 260px);
-            width: calc(100% - var(--sidebar-w));
-            height: 100%;
+            left: 0; 
+            width: 100%;
             height: 100vh;
-            background-color: rgba(0,0,0,0.7); 
-            backdrop-filter: blur(8px); 
+            background-color: rgba(15, 23, 42, 0.65); 
+            backdrop-filter: blur(4px); 
             align-items: center; 
             justify-content: center; 
         }
