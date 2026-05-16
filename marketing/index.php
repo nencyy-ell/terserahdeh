@@ -19,34 +19,114 @@ $lead_baru = $conn->query("SELECT COUNT(*) as c FROM marketing_reports WHERE sta
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <style>
-        .clickable-location { cursor: pointer; color: var(--green-mid); text-decoration: underline; font-weight: 500; transition: color 0.2s; }
+        .clickable-location { cursor: pointer; color: var(--green-mid); font-weight: 600; transition: color 0.2s; display:inline-flex; align-items:center; gap:4px; }
         .clickable-location:hover { color: var(--gold); }
-        /* Modal Styles */
-        .modal { 
-            display: none; 
-            position: fixed; 
-            z-index: 9999; 
-            top: 0; 
-            left: 0; 
-            width: 100%;
-            height: 100vh;
-            background-color: rgba(15, 23, 42, 0.65); 
-            backdrop-filter: blur(4px); 
-            align-items: center; 
-            justify-content: center; 
+
+        /* PREMIUM DETAIL MODAL */
+        .detail-modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0; left: var(--sidebar-w); right: 0; bottom: 0;
+            background: rgba(5,15,10,0.72);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 900;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-        @media(max-width: 900px) {
-            .modal { left: 0; width: 100vw; }
+        .detail-modal-backdrop.open { display: flex; animation: dmFadeIn 0.22s ease-out; }
+        @media(max-width:900px) { .detail-modal-backdrop { left:0; } }
+
+        @keyframes dmFadeIn  { from{opacity:0} to{opacity:1} }
+        @keyframes dmSlideUp { from{opacity:0;transform:translateY(28px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+
+        .detail-modal {
+            background: #fff;
+            border-radius: 20px;
+            width: 100%; max-width: 740px;
+            max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08);
+            animation: dmSlideUp 0.3s cubic-bezier(0.34,1.4,0.64,1) forwards;
+            position: relative; display: flex; flex-direction: column;
         }
-        .modal-content { background-color: #fff; padding: 0; border-radius: 16px; width: 95%; max-width: 900px; max-height: 95vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); position: relative; display: flex; flex-direction: column; }
-        .modal-header { padding: 24px; border-bottom: 1px solid #f1f5f9; flex-shrink: 0; }
-        .close-modal { position: absolute; right: 20px; top: 20px; font-size: 28px; font-weight: bold; color: #64748b; cursor: pointer; transition: color 0.2s; z-index: 10; line-height: 1; }
-        .close-modal:hover { color: #0f172a; }
-        #modalMap { height: 400px; width: 100%; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; }
-        .modal-body { padding: 0; flex: 1; }
-        .modal-photo-wrap { padding: 32px 24px; text-align: center; background: #f8fafc; }
-        .modal-photo-wrap h4 { margin-bottom: 20px; text-align: left; display: flex; align-items: center; gap: 8px; color: #334155; }
-        .modal-photo-wrap img { max-width: 100%; border-radius: 12px; box-shadow: var(--shadow-lg); border: 4px solid #fff; }
+        .detail-modal::-webkit-scrollbar { width:5px; }
+        .detail-modal::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:3px; }
+
+        .dm-header {
+            background: linear-gradient(135deg, #0d2b1c 0%, #16452e 55%, #1f6640 100%);
+            padding: 28px 28px 22px;
+            border-radius: 20px 20px 0 0;
+            position: relative; overflow: hidden;
+        }
+        .dm-header::before {
+            content:''; position:absolute; top:-40px; right:-40px;
+            width:160px; height:160px; border-radius:50%;
+            background: rgba(251,189,35,0.1);
+        }
+        .dm-header::after {
+            content:''; position:absolute; bottom:-50px; left:20px;
+            width:120px; height:120px; border-radius:50%;
+            background: rgba(255,255,255,0.04);
+        }
+        .dm-close {
+            position:absolute; top:14px; right:14px;
+            width:34px; height:34px;
+            background:rgba(255,255,255,0.15); border:none; border-radius:50%;
+            color:#fff; font-size:16px; cursor:pointer;
+            display:flex; align-items:center; justify-content:center;
+            transition:background 0.2s; z-index:10;
+        }
+        .dm-close:hover { background:rgba(255,255,255,0.28); }
+        .dm-icon {
+            width:46px; height:46px; background:var(--gold);
+            border-radius:12px; display:flex; align-items:center;
+            justify-content:center; font-size:20px; color:var(--green-dark);
+            margin-bottom:12px; box-shadow:0 4px 14px rgba(251,189,35,0.45);
+        }
+        .dm-title { font-size:20px; font-weight:800; color:#fff; margin:0 0 5px; letter-spacing:-0.3px; }
+        .dm-sub { font-size:12px; color:rgba(255,255,255,0.6); margin:0; display:flex; align-items:center; gap:5px; }
+
+        #modalMap { height:300px; width:100%; }
+
+        .dm-map-badge {
+            position:absolute; bottom:12px; left:12px;
+            background:rgba(13,43,28,0.88);
+            color:#fff; font-size:11px; font-weight:600;
+            padding:5px 10px; border-radius:20px;
+            backdrop-filter:blur(4px);
+            display:flex; align-items:center; gap:5px;
+            z-index:800; pointer-events:none;
+        }
+        .dm-map-badge i { color:var(--gold); }
+
+        .dm-photo-section {
+            padding: 22px 26px;
+            background: #f8fafc;
+            border-top: 1px solid #e8edf2;
+            border-radius: 0 0 20px 20px;
+        }
+        .dm-photo-label {
+            display:flex; align-items:center; gap:9px;
+            font-size:13px; font-weight:700;
+            color:var(--green-dark); margin-bottom:14px;
+        }
+        .dm-photo-label i {
+            width:28px; height:28px;
+            background:var(--green-light);
+            border-radius:6px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:12px; color:var(--green-mid);
+        }
+        .dm-photo-grid img {
+            width:100%; border-radius:10px;
+            border:3px solid #fff;
+            box-shadow:0 4px 16px rgba(0,0,0,0.1);
+            transition:transform 0.2s, box-shadow 0.2s;
+        }
+        .dm-photo-grid img:hover { transform:scale(1.015); box-shadow:0 8px 24px rgba(0,0,0,0.16); }
+        .dm-no-photo { text-align:center; padding:28px; color:#94a3b8; font-size:13px; }
+        .dm-no-photo i { font-size:36px; margin-bottom:10px; opacity:0.35; display:block; }
     </style>
 </head>
 <body>
@@ -140,77 +220,98 @@ $lead_baru = $conn->query("SELECT COUNT(*) as c FROM marketing_reports WHERE sta
     </main>
 </div>
 
-<!-- Modal Detail Lokasi & Foto -->
-<div id="detailModal" class="modal">
-    <div class="modal-content">
-        <span class="close-modal" onclick="closeModal()">&times;</span>
-        
-        <div class="modal-header">
-            <h3 id="modalTitle" style="margin-bottom: 4px; color: #0f172a;">Detail Lokasi</h3>
-            <p id="modalSub" style="color: #64746b; font-size: 14px;">Titik presisi saat laporan dikirim oleh marketing</p>
+<!-- Modal Detail Lokasi & Foto (Premium) -->
+<div id="detailModal" class="detail-modal-backdrop" onclick="if(event.target===this)closeModal()">
+    <div class="detail-modal">
+
+        <!-- Header -->
+        <div class="dm-header">
+            <button class="dm-close" onclick="closeModal()"><i class="fas fa-times"></i></button>
+            <div class="dm-icon"><i class="fas fa-map-marker-alt"></i></div>
+            <h3 class="dm-title" id="modalTitle">Detail Lokasi</h3>
+            <p class="dm-sub"><i class="fas fa-info-circle"></i> <span id="modalSub">Titik presisi saat laporan dikirim oleh marketing</span></p>
         </div>
-        
-        <div id="modalMap"></div>
-        
-        <div class="modal-body">
-            <div class="modal-photo-wrap" id="photoSection" style="display:none;">
-                <h4><i class="fas fa-camera" style="color: var(--green-mid);"></i> Foto Kegiatan</h4>
-                <img id="modalPhoto" src="" alt="Foto Kegiatan">
+
+        <!-- Map -->
+        <div style="position:relative;">
+            <div id="modalMap"></div>
+            <div class="dm-map-badge"><i class="fas fa-satellite-dish"></i> GPS Terverifikasi</div>
+        </div>
+
+        <!-- Foto -->
+        <div class="dm-photo-section" id="photoSection">
+            <div class="dm-photo-label">
+                <i class="fas fa-camera"></i>
+                Foto Kegiatan
+            </div>
+            <div class="dm-photo-grid">
+                <img id="modalPhoto" src="" alt="Foto Kegiatan" style="display:none;">
+            </div>
+            <div class="dm-no-photo" id="noPhotoMsg">
+                <i class="fas fa-image"></i>
+                Tidak ada foto yang dilampirkan
             </div>
         </div>
+
     </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-    let detailMap;
-    let detailMarker;
+    let detailMap, detailMarker;
 
     function initMap() {
         if (!detailMap) {
-            detailMap = L.map('modalMap').setView([0, 0], 15);
+            detailMap = L.map('modalMap', { zoomControl: true }).setView([0,0], 15);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(detailMap);
-            detailMarker = L.marker([0, 0]).addTo(detailMap);
+
+            // Custom marker icon (gold pin)
+            const goldIcon = L.divIcon({
+                className: '',
+                html: '<div style="width:36px;height:36px;background:linear-gradient(135deg,#fbbd23,#f5a50b);border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 4px 12px rgba(251,189,35,0.5);border:3px solid #fff;"></div>',
+                iconSize: [36,36],
+                iconAnchor: [18,36]
+            });
+            detailMarker = L.marker([0,0], { icon: goldIcon }).addTo(detailMap);
         }
     }
 
     function showDetail(lat, lng, photoUrl, title) {
-        const modal = document.getElementById('detailModal');
-        modal.style.display = 'flex';
-        
+        const backdrop = document.getElementById('detailModal');
+        backdrop.classList.add('open');
+        document.body.style.overflow = 'hidden';
+
         document.getElementById('modalTitle').innerText = title || 'Detail Lokasi';
-        
+
         setTimeout(() => {
             initMap();
-            const pos = [lat, lng];
+            const pos = [parseFloat(lat), parseFloat(lng)];
             detailMap.setView(pos, 17);
             detailMarker.setLatLng(pos);
             detailMap.invalidateSize();
-        }, 100);
+        }, 120);
 
         const photoImg = document.getElementById('modalPhoto');
-        const photoSec = document.getElementById('photoSection');
+        const noPhoto  = document.getElementById('noPhotoMsg');
         if (photoUrl) {
             photoImg.src = photoUrl;
-            photoSec.style.display = 'block';
+            photoImg.style.display = 'block';
+            noPhoto.style.display  = 'none';
         } else {
-            photoSec.style.display = 'none';
+            photoImg.style.display = 'none';
+            noPhoto.style.display  = 'block';
         }
     }
 
     function closeModal() {
-        document.getElementById('detailModal').style.display = 'none';
+        document.getElementById('detailModal').classList.remove('open');
+        document.body.style.overflow = '';
     }
 
-    // Close on click outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('detailModal');
-        if (event.target == modal) {
-            closeModal();
-        }
-    }
+    // Escape key
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') closeModal(); });
 </script>
 </body>
 </html>

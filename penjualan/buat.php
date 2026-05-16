@@ -117,7 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 3. KURANGI STOK MATERIAL LANGSUNG (BERDASARKAN KOMPOSISI)
         $mat_update_stmt = $conn->prepare("UPDATE materials SET stok_tersedia = stok_tersedia - ? WHERE id = ?");
-        $mat_log_stmt    = $conn->prepare("INSERT INTO permintaan_material (material_id, jumlah, diminta_oleh, status, tanggal, pesanan_id) VALUES (?,?,'Produksi (Otomatis)','Selesai',CURDATE(),?)");
+        $keterangan_otomatis = 'Otomatis - ' . $no;
+        $mat_log_stmt    = $conn->prepare("INSERT INTO permintaan_material (material_id, jumlah, diminta_oleh, status, tanggal, pesanan_id) VALUES (?,?,?,'Selesai',CURDATE(),?)");
 
         foreach ($items as $item) {
             $kode = sanitize($conn, $item['kode']);
@@ -132,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $mid = $c['material_id'];
                         $mat_update_stmt->bind_param("di", $total_req, $mid);
                         $mat_update_stmt->execute();
-                        $mat_log_stmt->bind_param("idi", $mid, $total_req, $pesanan_id);
+                        $mat_log_stmt->bind_param("idsi", $mid, $total_req, $keterangan_otomatis, $pesanan_id);
                         $mat_log_stmt->execute();
                     }
                 }
@@ -182,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="page-header">
             <h1>Buat Pesanan Baru</h1>
-            <p>Form pemesanan multi-item ala Accurate</p>
+            <p>Isi detail pesanan dan rincian item beton di bawah ini</p>
         </div>
 
         <?php if (isset($error_msg)): ?>
@@ -237,8 +238,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
 
-                        <div style="margin-top:30px;">
-                            <h3 style="font-size:15px; margin-bottom:12px; color:#1e293b;">Rincian Barang</h3>
+                        <div style="margin-top:28px;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                                <h3 style="font-size:14px; font-weight:700; color:var(--green-dark); margin:0; text-transform:uppercase; letter-spacing:0.5px;">Rincian Item Beton</h3>
+                            </div>
                             <div class="table-wrap" style="border:none;">
                                 <table class="item-table">
                                     <thead>
@@ -276,7 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <!-- PREVIEW KOMPOSISI MATERIAL -->
                         <div id="komposisiPanel" style="display:none; margin-top:20px; border:1px solid #d1fae5; border-radius:10px; overflow:hidden;">
                             <div style="background:#ecfdf5; padding:12px 16px; border-bottom:1px solid #d1fae5;">
-                                <h4 style="margin:0; color:#065f46; font-size:14px;"><i class="fas fa-flask"></i> Kebutuhan Material (estimasi berdasarkan komposisi)</h4>
+                                <h4 style="margin:0; color:#065f46; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px;"><i class="fas fa-cubes"></i> Estimasi Kebutuhan Material</h4>
                             </div>
                             <div style="padding:16px;">
                                 <table style="width:100%; font-size:13px; border-collapse:collapse;">
@@ -295,7 +298,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
                 <div class="card" style="padding:24px; position:sticky; top:100px; background:#fff;">
-                    <h3 style="font-size:16px; margin-bottom:20px;">Ringkasan Biaya</h3>
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px; padding-bottom:16px; border-bottom:2px solid var(--border);">
+                        <div style="width:32px; height:32px; background:var(--green-light); border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                            <i class="fas fa-file-invoice-dollar" style="color:var(--green-dark); font-size:14px;"></i>
+                        </div>
+                        <h3 style="font-size:14px; font-weight:800; margin:0; color:var(--green-dark); text-transform:uppercase; letter-spacing:0.5px;">Ringkasan Biaya</h3>
+                    </div>
                     
                     <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:14px; color:#64748b;">
                         <span>Subtotal</span>
@@ -338,8 +346,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <input type="hidden" name="ppn_nominal_hidden" id="h_ppn">
                     <input type="hidden" name="total_hidden" id="h_total">
 
-                    <button type="submit" class="btn-masuk" style="width:100%; margin-top:30px; padding:15px; font-size:15px;">
-                        <i class="fas fa-save"></i> SIMPAN PESANAN
+                    <button type="submit" class="btn btn-green" style="width:100%; margin-top:28px; padding:14px; font-size:14px; letter-spacing:0.5px;">
+                        <i class="fas fa-save"></i> Simpan Pesanan
                     </button>
                 </div>
             </div>

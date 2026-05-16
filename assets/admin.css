@@ -56,7 +56,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     background: linear-gradient(180deg, var(--sidebar-bg) 0%, #081a11 100%);
     display: flex; flex-direction: column;
     position: fixed; top: 0; left: 0; bottom: 0;
-    z-index: 100;
+    z-index: 200;
     box-shadow: 4px 0 24px rgba(0,0,0,0.15);
 }
 
@@ -394,12 +394,16 @@ input:checked + .slider:before { transform: translateX(22px); }
 /* =============================================
    MAP (Marketing)
    ============================================= */
-#map { height: 350px; border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
+#map { height: 350px; border-radius: var(--radius-md); border: 1px solid var(--border); box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); position: relative; z-index: 1; }
+/* Pastikan Leaflet tile/pane tidak menembus overlay mobile */
+.leaflet-pane, .leaflet-top, .leaflet-bottom { z-index: 1 !important; }
+.leaflet-top { z-index: 2 !important; }
+
 
 /* =============================================
    MODAL
    ============================================= */
-.modal-backdrop { display:none; position:fixed; inset:0; background:rgba(10, 31, 11, 0.4); backdrop-filter: blur(4px); z-index:500; align-items:center; justify-content:center; }
+.modal-backdrop { display:none; position:fixed; top:0; left:var(--sidebar-w); right:0; bottom:0; background:rgba(10, 31, 11, 0.4); backdrop-filter: blur(4px); z-index:500; align-items:center; justify-content:center; }
 .modal-backdrop.open { display:flex; animation: fadeIn 0.3s ease-out; }
 .modal { background:var(--white); border-radius:var(--radius-lg); padding:36px; width:540px; max-width:95vw; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-lg); transform: translateY(20px); animation: slideUp 0.3s ease-out forwards; }
 .modal h3 { font-size:22px; font-weight:800; margin-bottom:24px; color: var(--green-dark); }
@@ -426,7 +430,7 @@ input:checked + .slider:before { transform: translateX(22px); }
     position: fixed;
     top: 20px;
     right: 20px;
-    z-index: 1000;
+    z-index: 210; /* above sidebar (200) */
     background: var(--green-dark);
     color: var(--white);
     border: none;
@@ -438,15 +442,19 @@ input:checked + .slider:before { transform: translateX(22px); }
     font-size: 20px;
     align-items: center;
     justify-content: center;
+    transition: var(--transition);
 }
 
 .mobile-overlay {
     display: none;
     position: fixed;
-    inset: 0;
-    background: rgba(10, 31, 11, 0.4);
-    backdrop-filter: blur(4px);
-    z-index: 90;
+    top: 0;
+    left: var(--sidebar-w); /* mulai dari tepi kanan sidebar, tidak nutupin sidebar */
+    right: 0;
+    bottom: 0;
+    background: rgba(5, 15, 8, 0.65);
+    backdrop-filter: blur(6px);
+    z-index: 150;
     opacity: 0;
     transition: opacity 0.3s ease;
 }
@@ -462,6 +470,7 @@ input:checked + .slider:before { transform: translateX(22px); }
     .sidebar.show { transform: translateX(0); }
     .mobile-overlay.show { display: block; opacity: 1; }
     .main-content { margin-left: 0; padding: 24px; padding-top: 80px; }
+    .modal-backdrop { left: 0; } /* sidebar hidden on mobile, backdrop covers full screen */
 }
 
 @media print {

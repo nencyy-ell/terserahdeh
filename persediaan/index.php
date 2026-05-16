@@ -95,6 +95,7 @@ $permintaan = $conn->query("SELECT pm.*, m.nama as nama_material, m.satuan, p.no
 $total_mat   = $conn->query("SELECT COUNT(*) as c FROM materials")->fetch_assoc()['c'] ?? 0;
 $stok_rendah = $conn->query("SELECT COUNT(*) as c FROM materials WHERE stok_tersedia < stok_minimum")->fetch_assoc()['c'] ?? 0;
 $permintaan_hari = $conn->query("SELECT COUNT(*) as c FROM permintaan_material WHERE tanggal=CURDATE()")->fetch_assoc()['c'] ?? 0;
+$auto_hari = $conn->query("SELECT COUNT(*) as c FROM permintaan_material WHERE tanggal=CURDATE() AND diminta_oleh LIKE 'Otomatis%'")->fetch_assoc()['c'] ?? 0;
 $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FROM materials WHERE stok_minimum > 0")->fetch_assoc()['avg'] ?? 85;
 ?>
 <!DOCTYPE html>
@@ -117,6 +118,16 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
         </div>
 
         <?php if ($msg): ?><div class="alert alert-success">✅ <?= $msg ?></div><?php endif; ?>
+
+        <?php if ($auto_hari > 0): ?>
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px; color:#1e40af; font-size:14px;">
+            <i class="fas fa-robot" style="font-size:18px;"></i>
+            <div>
+                <strong>Pemotongan Stok Otomatis Hari Ini:</strong>
+                Stok material telah otomatis dikurangi sebanyak <strong><?= $auto_hari ?> kali</strong> berdasarkan pesanan penjualan yang masuk hari ini. Lihat detail di tabel permintaan di bawah.
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- STAT CARDS -->
         <div class="stats-grid">
@@ -218,18 +229,38 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
             <div class="table-wrap">
                 <table>
                     <thead>
-                        <tr><th>Material</th><th>Jumlah</th><th>Diminta Oleh</th><th>Ref. Invoice</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr>
+                        <tr><th>Material</th><th>Jumlah</th><th>Keterangan</th><th>Ref. Invoice</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr>
                     </thead>
                     <tbody>
                         <?php if ($permintaan && $permintaan->num_rows > 0):
                             while ($pm = $permintaan->fetch_assoc()): ?>
                         <tr>
-                            <td><?= htmlspecialchars($pm['nama_material']) ?></td>
+                            <td><strong><?= htmlspecialchars($pm['nama_material']) ?></strong></td>
                             <td><?= number_format($pm['jumlah'], 2) ?> <?= htmlspecialchars($pm['satuan']) ?></td>
-                            <td><?= htmlspecialchars($pm['diminta_oleh']) ?></td>
+                            <td>
+                                <?php if (strpos($pm['diminta_oleh'], 'Otomatis') === 0): ?>
+                                    <span style="display:inline-flex; align-items:center; gap:5px; background:#eff6ff; color:#1d4ed8; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:700;">
+                                        <i class="fas fa-robot"></i> <?= htmlspecialchars($pm['diminta_oleh']) ?>
+                                    </span>
+                                <?php else: ?>
+                                    <?= htmlspecialchars($pm['diminta_oleh']) ?>
+                                <?php endif; ?>
+                            </td>
                             <td><small><?= $pm['no_invoice'] ? '<strong>'.$pm['no_invoice'].'</strong>' : '-' ?></small></td>
                             <td><?= date('d/m/Y', strtotime($pm['tanggal'])) ?></td>
-                            <td><span class="badge badge-<?= strtolower($pm['status']) === 'pending' ? 'pending' : (strtolower($pm['status']) === 'ditolak' ? 'rendah' : 'aman') ?>"><?= $pm['status'] ?></span></td>
+                            <td>
+                                <?php
+                                $is_otomatis = strpos($pm['diminta_oleh'], 'Otomatis') === 0;
+                                if ($pm['status'] === 'Selesai' && $is_otomatis): ?>
+                                    <span class="badge" style="background:#dbeafe; color:#1e40af;">✅ Otomatis</span>
+                                <?php elseif ($pm['status'] === 'Selesai'): ?>
+                                    <span class="badge badge-aman">Selesai</span>
+                                <?php elseif ($pm['status'] === 'Pending'): ?>
+                                    <span class="badge badge-pending">Pending</span>
+                                <?php else: ?>
+                                    <span class="badge badge-rendah"><?= $pm['status'] ?></span>
+                                <?php endif; ?>
+                            </td>
                             <td style="white-space:nowrap;">
                                 <a href="cetak.php?id=<?= $pm['id'] ?>" class="btn btn-sm btn-outline btn-icon" title="Cetak Bukti" target="_blank">🖨</a>
                                 <?php if ($can_edit && $pm['status'] === 'Pending'): ?>
