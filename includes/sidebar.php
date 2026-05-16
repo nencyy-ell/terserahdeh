@@ -60,9 +60,24 @@ $currentPage = $currentPage ?? '';
                 <i class="fas fa-chart-line"></i> Marketing
             </a>
         <?php else: ?>
-            <a href="#" onclick="alert('Akses Ditolak! Anda tidak memiliki izin untuk fitur Marketing.'); return false;" class="nav-item <?= $currentPage==='marketing' ? 'active' : '' ?>" style="opacity: 0.6;">
+            <a href="#" onclick="alert('Akses Ditolak! Anda tidak memiliki izin untuk fitur Marketing.'); return false;" class="nav-item <?= $currentPage==='marketing' ? 'active' : '' ?>">
                 <i class="fas fa-chart-line"></i> Marketing
             </a>
+        <?php endif; ?>
+
+        <?php if (in_array($_SESSION['admin_role'] ?? '', ['superadmin', 'admin'])): ?>
+        <div style="padding: 16px 18px 6px; font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.3); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 8px;">
+            Pengaturan
+        </div>
+        <a href="<?= BASE_URL ?>/pengaturan/users.php" class="nav-item <?= $currentPage==='manage_users' ? 'active' : '' ?>">
+            <i class="fas fa-users-cog"></i> Manajemen User
+        </a>
+        <a href="<?= BASE_URL ?>/pengaturan/mutu.php" class="nav-item <?= $currentPage==='kelola_mutu' ? 'active' : '' ?>">
+            <i class="fas fa-cubes"></i> Kelola Harga & Mutu
+        </a>
+        <a href="<?= BASE_URL ?>/pengaturan/logs.php" class="nav-item <?= $currentPage==='activity_logs' ? 'active' : '' ?>">
+            <i class="fas fa-clipboard-list"></i> Log Aktivitas
+        </a>
         <?php endif; ?>
     </nav>
 

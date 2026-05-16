@@ -38,13 +38,19 @@ while ($c = $comp_raw->fetch_assoc()) {
 
 // LOGIKA AUTO-FILL DARI MARKETING (Jika ada report_id)
 $preset_pelanggan = '';
-$preset_proyek = '';
+$preset_proyek    = '';
+$preset_mutu      = '';
+$preset_volume    = '';
+$from_deal        = false;
 if (isset($_GET['report_id'])) {
     $report_id = (int)$_GET['report_id'];
-    $report = $conn->query("SELECT nama_kontraktor, nama_proyek FROM marketing_reports WHERE id = $report_id")->fetch_assoc();
+    $report = $conn->query("SELECT nama_kontraktor, nama_proyek, mutu_beton, volume_pasti FROM marketing_reports WHERE id = $report_id")->fetch_assoc();
     if ($report) {
         $preset_pelanggan = $report['nama_kontraktor'];
-        $preset_proyek = $report['nama_proyek'];
+        $preset_proyek    = $report['nama_proyek'];
+        $preset_mutu      = $report['mutu_beton'] ?? '';
+        $preset_volume    = $report['volume_pasti'] ?? '';
+        $from_deal        = ($preset_mutu !== '' || $preset_volume !== '');
     }
 }
 
@@ -192,6 +198,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <?php endif; ?>
 
+        <?php if ($from_deal): ?>
+        <div style="background:#fff; border:1px solid #e2e8f0; border-left: 5px solid #10b981; border-radius:12px; padding:20px 24px; margin-bottom:24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display:flex; align-items:center; gap:20px;">
+            <div style="width:50px; height:50px; background:#f0fdf4; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#10b981;">
+                <i class="fas fa-link" style="font-size:20px;"></i>
+            </div>
+            <div style="flex:1;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                    <span style="background:#dcfce7; color:#15803d; font-size:11px; font-weight:800; padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:0.5px;">Auto-Fill Aktif</span>
+                    <span style="font-size:14px; color:#64748b; font-weight:500;">Terhubung dengan Laporan Deal Marketing</span>
+                </div>
+                <div style="font-size:15px; color:#1e293b; font-weight:700;">
+                    Mutu: <span style="color:#059669;"><?= htmlspecialchars($preset_mutu) ?></span>
+                    <span style="margin:0 12px; color:#cbd5e1;">|</span>
+                    Volume: <span style="color:#059669;"><?= number_format($preset_volume, 2, ',', '.') ?> m³</span>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?php if (!empty($low_stock_list)): ?>
         <div class="alert alert-warning" style="margin-bottom:24px; background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; padding:16px; border-radius:8px;">
             <div style="display:flex; gap:12px; align-items:start;">
@@ -261,12 +286,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                 <select name="items[0][kode]" class="select-prod" onchange="updateRow(this)">
                                                     <option value="">-- Pilih --</option>
                                                     <?php foreach($prod_data as $p): ?>
-                                                        <option value="<?= $p['kode'] ?>" data-harga="<?= $p['harga_per_m3'] ?>"><?= $p['kode'] ?></option>
+                                                        <option value="<?= $p['kode'] ?>" data-harga="<?= $p['harga_per_m3'] ?>"
+                                                            <?= ($preset_mutu === $p['kode']) ? 'selected' : '' ?>>
+                                                            <?= $p['kode'] ?>
+                                                        </option>
                                                     <?php endforeach; ?>
                                                 </select>
                                             </td>
-                                            <td><input type="number" name="items[0][volume]" class="val-vol" value="0" min="0" step="0.01" oninput="calculate(); updateKomposisi();"></td>
-                                            <td><input type="number" name="items[0][harga]" class="val-harga" value="0" oninput="calculate()"></td>
+                                            <td><input type="number" name="items[0][volume]" class="val-vol" value="<?= $preset_volume ?: 0 ?>" min="0" step="0.01" oninput="calculate(); updateKomposisi();"></td>
+                                            <td><input type="number" name="items[0][harga]" class="val-harga" value="<?= $preset_mutu ? (array_values(array_filter($prod_data, fn($p) => $p['kode'] === $preset_mutu))[0]['harga_per_m3'] ?? 0) : 0 ?>" oninput="calculate()"></td>
                                             <td><input type="text" class="val-subtotal" value="Rp 0" readonly style="background:#f8fafc; font-weight:700;"></td>
                                             <td><i class="fas fa-trash btn-remove" onclick="removeRow(this)"></i></td>
                                         </tr>
@@ -479,6 +507,12 @@ function calculate() {
     document.getElementById('h_ppn').value = ppnVal;
     document.getElementById('h_total').value = total;
 }
+
+// Auto-hitung saat halaman dimuat (untuk pre-fill dari data deal)
+document.addEventListener('DOMContentLoaded', function() {
+    calculate();
+    updateKomposisi();
+});
 </script>
 </body>
 </html>

@@ -127,6 +127,17 @@ $lead_baru = $conn->query("SELECT COUNT(*) as c FROM marketing_reports WHERE sta
         .dm-photo-grid img:hover { transform:scale(1.015); box-shadow:0 8px 24px rgba(0,0,0,0.16); }
         .dm-no-photo { text-align:center; padding:28px; color:#94a3b8; font-size:13px; }
         .dm-no-photo i { font-size:36px; margin-bottom:10px; opacity:0.35; display:block; }
+        /* Premium Stats Style */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px; }
+        .premium-stat-card { background: #fff; border-radius: 16px; padding: 24px; border: 1px solid #e2e8f0; transition: all 0.3s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+        .premium-stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px -5px rgba(0,0,0,0.08); }
+        .premium-stat-card .icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 20px; }
+        .premium-stat-card .label { color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
+        .premium-stat-card .value { color: #0f172a; font-size: 28px; font-weight: 800; margin-bottom: 4px; display: block; }
+        .premium-stat-card .subtext { font-size: 13px; color: #64748b; font-weight: 500; }
+        .accent-blue { border-top: 4px solid #3b82f6; }
+        .accent-green { border-top: 4px solid #10b981; }
+        .accent-orange { border-top: 4px solid #f59e0b; }
     </style>
 </head>
 <body>
@@ -145,21 +156,24 @@ $lead_baru = $conn->query("SELECT COUNT(*) as c FROM marketing_reports WHERE sta
         </div>
 
         <!-- STAT CARDS -->
-        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-top:24px;">
-            <div class="stat-card">
-                <div class="stat-top"><span class="stat-label">Kunjungan Hari Ini</span><span style="color:var(--green-mid);font-size:20px;">📍</span></div>
-                <div class="stat-value"><?= $kunjungan_hari ?></div>
-                <div class="stat-sub">Total aktivitas</div>
+        <div class="stats-grid" style="margin-top:24px;">
+            <div class="premium-stat-card accent-blue">
+                <div class="icon-box" style="background:#eff6ff; color:#3b82f6;"><i class="fas fa-location-dot"></i></div>
+                <span class="label">Kunjungan Hari Ini</span>
+                <span class="value"><?= $kunjungan_hari ?></span>
+                <span class="subtext">Total aktivitas</span>
             </div>
-            <div class="stat-card">
-                <div class="stat-top"><span class="stat-label">Marketing Aktif</span><span style="color:var(--green-mid);font-size:20px;">⏱</span></div>
-                <div class="stat-value" style="color:var(--green-mid);"><?= $marketing_aktif ?></div>
-                <div class="stat-sub">Sedang bertugas</div>
+            <div class="premium-stat-card accent-green">
+                <div class="icon-box" style="background:#f0fdf4; color:#10b981;"><i class="fas fa-stopwatch-20"></i></div>
+                <span class="label">Marketing Aktif</span>
+                <span class="value" style="color:#10b981;"><?= $marketing_aktif ?></span>
+                <span class="subtext">Sedang bertugas</span>
             </div>
-            <div class="stat-card">
-                <div class="stat-top"><span class="stat-label">Lead Baru</span><span style="color:var(--green-mid);font-size:20px;">✅</span></div>
-                <div class="stat-value" style="color:var(--gold);"><?= $lead_baru ?></div>
-                <div class="stat-sub">Prospek potensial</div>
+            <div class="premium-stat-card accent-orange">
+                <div class="icon-box" style="background:#fffbeb; color:#f59e0b;"><i class="fas fa-user-plus"></i></div>
+                <span class="label">Lead Baru</span>
+                <span class="value" style="color:#f59e0b;"><?= $lead_baru ?></span>
+                <span class="subtext">Prospek potensial</span>
             </div>
         </div>
 

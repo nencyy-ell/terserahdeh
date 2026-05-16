@@ -85,10 +85,12 @@ if (isset($_GET['aksi_permintaan']) && $can_edit) {
 }
 
 $materials = $conn->query("SELECT * FROM materials ORDER BY id");
-$permintaan = $conn->query("SELECT pm.*, m.nama as nama_material, m.satuan, p.no_invoice 
+$permintaan = $conn->query("SELECT pm.pesanan_id, pm.tanggal, pm.status, pm.diminta_oleh, p.no_invoice, MIN(pm.id) as single_id,
+                                   GROUP_CONCAT(CONCAT(m.nama, ' (', pm.jumlah, ' ', m.satuan, ')') SEPARATOR '<br>') as daftar_material
                             FROM permintaan_material pm 
                             JOIN materials m ON pm.material_id=m.id 
                             LEFT JOIN pesanan p ON pm.pesanan_id=p.id
+                            GROUP BY pm.pesanan_id, pm.tanggal, pm.status, pm.diminta_oleh, p.no_invoice
                             ORDER BY pm.tanggal DESC LIMIT 20");
 
 // Summary
@@ -97,6 +99,12 @@ $stok_rendah = $conn->query("SELECT COUNT(*) as c FROM materials WHERE stok_ters
 $permintaan_hari = $conn->query("SELECT COUNT(*) as c FROM permintaan_material WHERE tanggal=CURDATE()")->fetch_assoc()['c'] ?? 0;
 $auto_hari = $conn->query("SELECT COUNT(*) as c FROM permintaan_material WHERE tanggal=CURDATE() AND diminta_oleh LIKE 'Otomatis%'")->fetch_assoc()['c'] ?? 0;
 $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FROM materials WHERE stok_minimum > 0")->fetch_assoc()['avg'] ?? 85;
+
+// Riwayat Stok Masuk
+$riwayat_masuk = $conn->query("SELECT s.*, a.name as admin_penerima 
+                               FROM stok_masuk s 
+                               LEFT JOIN admins a ON s.admin_id = a.id 
+                               ORDER BY s.tanggal DESC LIMIT 10");
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -112,7 +120,7 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
 
     <main class="main-content">
         <?php include '../includes/navbar.php'; ?>
-        <div class="page-header-row">
+        <div class="page-header">
             <h1>Persediaan</h1>
             <p>Kelola stok material dan bahan baku</p>
         </div>
@@ -129,27 +137,47 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
         </div>
         <?php endif; ?>
 
+        <style>
+            .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 32px; }
+            .premium-stat-card { background: #fff; border-radius: 16px; padding: 24px; border: 1px solid #e2e8f0; transition: all 0.3s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+            .premium-stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px -5px rgba(0,0,0,0.08); }
+            .premium-stat-card .icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 20px; }
+            .premium-stat-card .label { color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
+            .premium-stat-card .value { color: #0f172a; font-size: 28px; font-weight: 800; margin-bottom: 4px; display: block; }
+            .premium-stat-card .subtext { font-size: 13px; color: #64748b; font-weight: 500; }
+            .accent-blue { border-top: 4px solid #3b82f6; }
+            .accent-red { border-top: 4px solid #ef4444; }
+            .accent-orange { border-top: 4px solid #f59e0b; }
+            .accent-green { border-top: 4px solid #10b981; }
+        </style>
+
         <!-- STAT CARDS -->
         <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-top"><span class="stat-label">Total Material</span><span style="font-size:20px;">📦</span></div>
-                <div class="stat-value"><?= $total_mat ?></div>
-                <div class="stat-sub">Jenis material</div>
+            <div class="premium-stat-card accent-blue">
+                <div class="icon-box" style="background:#eff6ff; color:#3b82f6;"><i class="fas fa-boxes-stacked"></i></div>
+                <span class="label">Total Material</span>
+                <span class="value"><?= $total_mat ?></span>
+                <span class="subtext">Jenis material</span>
             </div>
-            <div class="stat-card">
-                <div class="stat-top"><span class="stat-label">Stok Rendah</span><span style="font-size:20px;">⚠️</span></div>
-                <div class="stat-value" style="color:<?= $stok_rendah > 0 ? '#ef4444' : 'var(--green-mid)' ?>;"><?= $stok_rendah ?></div>
-                <div class="stat-sub">Perlu pemesanan</div>
+            <div class="premium-stat-card <?= $stok_rendah > 0 ? 'accent-red' : 'accent-green' ?>">
+                <div class="icon-box" style="background:<?= $stok_rendah > 0 ? '#fef2f2' : '#f0fdf4' ?>; color:<?= $stok_rendah > 0 ? '#ef4444' : '#10b981' ?>;">
+                    <i class="fas <?= $stok_rendah > 0 ? 'fa-triangle-exclamation' : 'fa-circle-check' ?>"></i>
+                </div>
+                <span class="label">Stok Rendah</span>
+                <span class="value" style="color:<?= $stok_rendah > 0 ? '#ef4444' : 'inherit' ?>;"><?= $stok_rendah ?></span>
+                <span class="subtext">Perlu pemesanan</span>
             </div>
-            <div class="stat-card">
-                <div class="stat-top"><span class="stat-label">Permintaan Hari Ini</span><span style="font-size:20px;color:#ef4444;">📉</span></div>
-                <div class="stat-value"><?= $permintaan_hari ?></div>
-                <div class="stat-sub">Permintaan material</div>
+            <div class="premium-stat-card accent-orange">
+                <div class="icon-box" style="background:#fffbeb; color:#f59e0b;"><i class="fas fa-clipboard-list"></i></div>
+                <span class="label">Permintaan Hari Ini</span>
+                <span class="value"><?= $permintaan_hari ?></span>
+                <span class="subtext">Permintaan material</span>
             </div>
-            <div class="stat-card">
-                <div class="stat-top"><span class="stat-label">Status Stok</span><span style="font-size:20px;color:#10b981;">📈</span></div>
-                <div class="stat-value" style="color:var(--green-mid);"><?= round($avg_stok) ?>%</div>
-                <div class="stat-sub">Rata-rata kecukupan</div>
+            <div class="premium-stat-card accent-green">
+                <div class="icon-box" style="background:#f0fdf4; color:#10b981;"><i class="fas fa-chart-pie"></i></div>
+                <span class="label">Status Stok</span>
+                <span class="value"><?= round($avg_stok) ?>%</span>
+                <span class="subtext">Rata-rata kecukupan</span>
             </div>
         </div>
 
@@ -157,11 +185,12 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
         <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                 <h3 style="margin-bottom:0;">Daftar Material &amp; Stok</h3>
-                <?php 
-                if ($can_edit): ?>
-                <button onclick="document.getElementById('modalTambah').classList.add('open')" class="btn btn-green btn-sm">
-                    <i class="fas fa-plus"></i> Tambah Material
-                </button>
+                <?php if ($can_edit): ?>
+                <div style="display:flex; gap:10px;">
+                    <a href="stok_masuk.php" class="btn btn-gold btn-sm">
+                        <i class="fas fa-truck-loading"></i> Input Stok Masuk (Supplier)
+                    </a>
+                </div>
                 <?php endif; ?>
             </div>
             <form method="POST">
@@ -227,20 +256,26 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
         <div class="card">
             <h3>Permintaan Material Terbaru</h3>
             <div class="table-wrap">
-                <table>
+                <table style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr><th>Material</th><th>Jumlah</th><th>Keterangan</th><th>Ref. Invoice</th><th>Tanggal</th><th>Status</th><th>Aksi</th></tr>
+                        <tr>
+                            <th style="width: 35%; text-align:left;">Daftar Material &amp; Jumlah</th>
+                            <th style="width: 20%; text-align:left;">Keterangan</th>
+                            <th style="width: 15%; text-align:left;">No. Invoice</th>
+                            <th style="width: 12%; text-align:left;">Tanggal</th>
+                            <th style="width: 10%; text-align:left;">Status</th>
+                            <th style="width: 10%; text-align:left;">Aksi</th>
+                        </tr>
                     </thead>
                     <tbody>
                         <?php if ($permintaan && $permintaan->num_rows > 0):
                             while ($pm = $permintaan->fetch_assoc()): ?>
                         <tr>
-                            <td><strong><?= htmlspecialchars($pm['nama_material']) ?></strong></td>
-                            <td><?= number_format($pm['jumlah'], 2) ?> <?= htmlspecialchars($pm['satuan']) ?></td>
+                            <td style="font-size:14px; line-height:1.5;"><?= $pm['daftar_material'] ?></td>
                             <td>
                                 <?php if (strpos($pm['diminta_oleh'], 'Otomatis') === 0): ?>
-                                    <span style="display:inline-flex; align-items:center; gap:5px; background:#eff6ff; color:#1d4ed8; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:700;">
-                                        <i class="fas fa-robot"></i> <?= htmlspecialchars($pm['diminta_oleh']) ?>
+                                    <span style="display:inline-flex; align-items:center; gap:5px; background:#eff6ff; color:#1d4ed8; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700;">
+                                        <i class="fas fa-robot"></i> Produksi (Otomatis)
                                     </span>
                                 <?php else: ?>
                                     <?= htmlspecialchars($pm['diminta_oleh']) ?>
@@ -252,26 +287,67 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
                                 <?php
                                 $is_otomatis = strpos($pm['diminta_oleh'], 'Otomatis') === 0;
                                 if ($pm['status'] === 'Selesai' && $is_otomatis): ?>
-                                    <span class="badge" style="background:#dbeafe; color:#1e40af;">✅ Otomatis</span>
+                                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:11px;">✅ Otomatis</span>
                                 <?php elseif ($pm['status'] === 'Selesai'): ?>
-                                    <span class="badge badge-aman">Selesai</span>
+                                    <span class="badge badge-aman" style="font-size:11px;">Selesai</span>
                                 <?php elseif ($pm['status'] === 'Pending'): ?>
-                                    <span class="badge badge-pending">Pending</span>
+                                    <span class="badge badge-pending" style="font-size:11px;">Pending</span>
                                 <?php else: ?>
-                                    <span class="badge badge-rendah"><?= $pm['status'] ?></span>
+                                    <span class="badge badge-rendah" style="font-size:11px;"><?= $pm['status'] ?></span>
                                 <?php endif; ?>
                             </td>
-                            <td style="white-space:nowrap;">
-                                <a href="cetak.php?id=<?= $pm['id'] ?>" class="btn btn-sm btn-outline btn-icon" title="Cetak Bukti" target="_blank">🖨</a>
-                                <?php if ($can_edit && $pm['status'] === 'Pending'): ?>
-                                <a href="index.php?aksi_permintaan=setujui&id_req=<?= $pm['id'] ?>" class="btn btn-sm btn-green" style="padding:4px 8px; font-size:11px;" onclick="return confirm('Setujui permintaan ini? Stok akan otomatis berkurang.')">Setujui</a>
-                                <a href="index.php?aksi_permintaan=tolak&id_req=<?= $pm['id'] ?>" class="btn btn-sm btn-danger" style="padding:4px 8px; font-size:11px;" onclick="return confirm('Tolak permintaan ini?')">Tolak</a>
+                            <td style="white-space:nowrap; text-align:left;">
+                                <?php if ($pm['pesanan_id']): ?>
+                                    <a href="invoice_keluar.php?pesanan_id=<?= $pm['pesanan_id'] ?>" class="btn btn-sm btn-green btn-icon" title="Cetak Bukti Pengeluaran (Gabungan)" target="_blank">
+                                        <i class="fas fa-file-invoice"></i>
+                                    </a>
+                                <?php else: ?>
+                                    <a href="cetak.php?id=<?= $pm['single_id'] ?>" class="btn btn-sm btn-outline btn-icon" title="Cetak Bukti" target="_blank">🖨</a>
                                 <?php endif; ?>
                             </td>
                         </tr>
                         <?php endwhile;
                         else: ?>
-                        <tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">Belum ada permintaan material.</td></tr>
+                        <tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px;">Belum ada permintaan material.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- RIWAYAT STOK MASUK (SUPPLIER) -->
+        <div class="card" style="border-top: 4px solid var(--gold); margin-top: 30px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0;"><i class="fas fa-history" style="color:var(--gold);"></i> Riwayat Stok Masuk (Supplier)</h3>
+            </div>
+            <div class="table-wrap">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%; text-align:left;">No. Surat Jalan</th>
+                            <th style="width: 25%; text-align:left;">Supplier</th>
+                            <th style="width: 20%; text-align:left;">Tanggal Terima</th>
+                            <th style="width: 20%; text-align:left;">Penerima</th>
+                            <th style="width: 10%; text-align:left;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($riwayat_masuk && $riwayat_masuk->num_rows > 0):
+                            while ($rm = $riwayat_masuk->fetch_assoc()): ?>
+                        <tr>
+                            <td><strong><?= htmlspecialchars($rm['no_surat_jalan']) ?></strong></td>
+                            <td><?= htmlspecialchars($rm['supplier']) ?></td>
+                            <td><?= date('d/m/Y', strtotime($rm['tanggal'])) ?></td>
+                            <td><small><?= htmlspecialchars($rm['admin_penerima']) ?></small></td>
+                            <td style="text-align:left;">
+                                <a href="invoice_masuk.php?id=<?= $rm['id'] ?>" class="btn btn-sm btn-outline btn-icon" title="Cetak Bukti Penerimaan" target="_blank">
+                                    <i class="fas fa-print"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <?php endwhile;
+                        else: ?>
+                        <tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px;">Belum ada riwayat stok masuk.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -279,45 +355,5 @@ $avg_stok = $conn->query("SELECT AVG((stok_tersedia/stok_minimum)*100) as avg FR
         </div>
     </main>
 </div>
-
-<?php if ($can_edit): ?>
-<!-- MODAL TAMBAH MATERIAL -->
-<div class="modal-backdrop" id="modalTambah" onclick="if(event.target===this)this.classList.remove('open')">
-    <div class="modal">
-        <button class="modal-close" onclick="document.getElementById('modalTambah').classList.remove('open')">×</button>
-        <h3>Tambah Material Baru</h3>
-        <form method="POST">
-            <div class="form-group">
-                <label>Nama Material</label>
-                <input type="text" name="nama_material" placeholder="Contoh: Semen Portland" required>
-            </div>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Satuan</label>
-                    <select name="satuan" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
-                        <option value="">-- Pilih Satuan --</option>
-                        <option value="T">T</option>
-                        <option value="m³">m³</option>
-                        <option value="L">L</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Stok Awal</label>
-                    <input type="number" name="stok_awal" placeholder="0" min="0">
-                </div>
-                <div class="form-group">
-                    <label>Stok Minimum</label>
-                    <input type="number" name="stok_min" placeholder="0" min="0">
-                </div>
-                <div class="form-group">
-                    <label>Harga Terakhir (Rp)</label>
-                    <input type="number" name="harga_awal" placeholder="0" min="0">
-                </div>
-            </div>
-            <button type="submit" name="tambah_material" class="btn btn-green" style="width:100%;padding:12px;">Tambah Material</button>
-        </form>
-    </div>
-</div>
-<?php endif; ?>
 </body>
 </html>

@@ -107,14 +107,35 @@ $aktivitas = $conn->query("SELECT * FROM activity_logs ORDER BY created_at DESC 
 
         <!-- NOTIFICATION AREA -->
         <?php if (!empty($notifs)): ?>
-        <div class="dashboard-notifs" style="margin-bottom: 24px;">
+        <div class="dashboard-notifs" style="margin-bottom: 32px;">
             <?php foreach ($notifs as $n): ?>
-            <div class="notif-item <?= $n['type'] ?>" style="display:flex; align-items:center; gap:15px; padding:15px 20px; border-radius:12px; margin-bottom:10px; background: <?= $n['type']==='warning' ? '#fff7ed' : ($n['type']==='success' ? '#f0fdf4' : '#f0f9ff') ?>; border: 1px solid <?= $n['type']==='warning' ? '#fdba74' : ($n['type']==='success' ? '#bbf7d0' : '#bae6fd') ?>; color: <?= $n['type']==='warning' ? '#9a3412' : ($n['type']==='success' ? '#166534' : '#0369a1') ?>; font-size:14px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: transform 0.2s; cursor: pointer;" onclick="location.href='<?= $n['link'] ?>'">
-                <i class="fas <?= $n['icon'] ?>" style="font-size:20px;"></i>
-                <div style="flex:1;"><?= $n['text'] ?></div>
-                <i class="fas fa-arrow-right" style="font-size:12px; opacity:0.5;"></i>
-            </div>
+            <a href="<?= $n['link'] ?>" class="notif-card <?= $n['type'] ?>" style="display: block; text-decoration: none; margin-bottom: 12px; transition: all 0.3s ease;">
+                <div style="display: flex; align-items: center; gap: 20px; padding: 18px 24px; background: #fff; border-radius: 12px; border-left: 5px solid <?= $n['type']==='warning' ? '#f59e0b' : ($n['type']==='success' ? '#10b981' : '#3b82f6') ?>; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); position: relative; overflow: hidden;">
+                    <!-- Subtle Background Accent -->
+                    <div style="position: absolute; right: -20px; top: -20px; font-size: 80px; opacity: 0.03; color: var(--text-muted);">
+                        <i class="fas <?= $n['icon'] ?>"></i>
+                    </div>
+                    
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: <?= $n['type']==='warning' ? '#fffbeb' : ($n['type']==='success' ? '#f0fdf4' : '#eff6ff') ?>; display: flex; align-items: center; justify-content: center; color: <?= $n['type']==='warning' ? '#d97706' : ($n['type']==='success' ? '#059669' : '#2563eb') ?>;">
+                        <i class="fas <?= $n['icon'] ?>" style="font-size: 18px;"></i>
+                    </div>
+                    
+                    <div style="flex: 1;">
+                        <div style="font-size: 14px; color: #334155; line-height: 1.5; font-weight: 500;">
+                            <?= $n['text'] ?>
+                        </div>
+                    </div>
+                    
+                    <div style="color: #94a3b8; font-size: 14px;">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+            </a>
             <?php endforeach; ?>
+            <style>
+                .notif-card:hover { transform: translateY(-3px); }
+                .notif-card:hover > div { box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); border-left-width: 8px; }
+            </style>
         </div>
         <?php endif; ?>
 
@@ -127,38 +148,68 @@ $aktivitas = $conn->query("SELECT * FROM activity_logs ORDER BY created_at DESC 
         <?php endif; ?>
 
         <!-- STAT CARDS -->
+        <style>
+            .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px; }
+            .premium-stat-card { background: #fff; border-radius: 16px; padding: 24px; border: 1px solid #e2e8f0; position: relative; overflow: hidden; transition: all 0.3s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+            .premium-stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px -5px rgba(0,0,0,0.08); }
+            .premium-stat-card .icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 20px; }
+            .premium-stat-card .label { color: #64748b; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
+            .premium-stat-card .value { color: #0f172a; font-size: 28px; font-weight: 800; margin-bottom: 4px; display: block; }
+            .premium-stat-card .subtext { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+            .trend-up { color: #10b981; }
+            .accent-blue { border-top: 4px solid #3b82f6; }
+            .accent-green { border-top: 4px solid #10b981; }
+            .accent-orange { border-top: 4px solid #f59e0b; }
+            .accent-purple { border-top: 4px solid #8b5cf6; }
+        </style>
         <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-top">
-                    <span class="stat-label">Total Penjualan Bulan Ini</span>
-                    <span class="stat-icon" style="color:#10b981;">📈</span>
+            <!-- Total Penjualan -->
+            <div class="premium-stat-card accent-blue">
+                <div class="icon-box" style="background: #eff6ff; color: #3b82f6;">
+                    <i class="fas fa-chart-line"></i>
                 </div>
-                <div class="stat-value"><?= formatRupiah($total_penjualan) ?></div>
-                <div class="stat-sub">+15.3%</div>
+                <span class="label">Total Penjualan</span>
+                <span class="value"><?= formatRupiah($total_penjualan) ?></span>
+                <div class="subtext trend-up">
+                    <i class="fas fa-arrow-trend-up"></i> <span>+15.3% bulan ini</span>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-top">
-                    <span class="stat-label">Pesanan Aktif</span>
-                    <span class="stat-icon" style="color:#3b82f6;">🛒</span>
+
+            <!-- Pesanan Aktif -->
+            <div class="premium-stat-card accent-green">
+                <div class="icon-box" style="background: #f0fdf4; color: #10b981;">
+                    <i class="fas fa-shopping-cart"></i>
                 </div>
-                <div class="stat-value"><?= $pesanan_aktif ?></div>
-                <div class="stat-sub">+<?= $pesanan_baru ?> pesanan</div>
+                <span class="label">Pesanan Aktif</span>
+                <span class="value"><?= $pesanan_aktif ?></span>
+                <div class="subtext" style="color: #64748b;">
+                    <i class="fas fa-plus"></i> <span><?= $pesanan_baru ?> pesanan baru</span>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-top">
-                    <span class="stat-label">Stok Material</span>
-                    <span class="stat-icon" style="color:#f97316;">📦</span>
+
+            <!-- Stok Material -->
+            <div class="premium-stat-card accent-orange">
+                <div class="icon-box" style="background: #fffbeb; color: #f59e0b;">
+                    <i class="fas fa-boxes-stacked"></i>
                 </div>
-                <div class="stat-value"><?= $avg_stok ?>%</div>
-                <div class="stat-sub"><?= $stok_status ?></div>
+                <span class="label">Stok Material</span>
+                <span class="value"><?= $avg_stok ?>%</span>
+                <div class="subtext" style="color: <?= $avg_stok >= 60 ? '#10b981' : '#ef4444' ?>;">
+                    <i class="fas <?= $avg_stok >= 60 ? 'fa-check-circle' : 'fa-triangle-exclamation' ?>"></i> 
+                    <span><?= $stok_status ?></span>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-top">
-                    <span class="stat-label">Pengguna Aktif</span>
-                    <span class="stat-icon" style="color:#8b5cf6;">👥</span>
+
+            <!-- Pengguna Online -->
+            <div class="premium-stat-card accent-purple">
+                <div class="icon-box" style="background: #f5f3ff; color: #8b5cf6;">
+                    <i class="fas fa-users"></i>
                 </div>
-                <div class="stat-value"><?= $pengguna_aktif ?></div>
-                <div class="stat-sub">Online</div>
+                <span class="label">Pengguna Aktif</span>
+                <span class="value"><?= $pengguna_aktif ?></span>
+                <div class="subtext" style="color: #10b981;">
+                    <i class="fas fa-circle" style="font-size: 8px;"></i> <span>Online saat ini</span>
+                </div>
             </div>
         </div>
 

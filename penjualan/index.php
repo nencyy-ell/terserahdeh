@@ -72,19 +72,34 @@ $total_nilai   = $conn->query("SELECT SUM(total_tagihan) as t FROM pesanan")->fe
             </div>
         </div>
 
+        <style>
+            .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px; }
+            .premium-stat-card { background: #fff; border-radius: 16px; padding: 24px; border: 1px solid #e2e8f0; transition: all 0.3s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+            .premium-stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 20px -5px rgba(0,0,0,0.08); }
+            .premium-stat-card .icon-box { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 20px; }
+            .premium-stat-card .label { color: #64748b; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
+            .premium-stat-card .value { color: #0f172a; font-size: 28px; font-weight: 800; display: block; }
+            .accent-blue { border-top: 4px solid #3b82f6; }
+            .accent-orange { border-top: 4px solid #f59e0b; }
+            .accent-green { border-top: 4px solid #10b981; }
+        </style>
+
         <!-- SUMMARY CARDS -->
-        <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-top:24px;">
-            <div class="stat-card" style="border:1px solid var(--border);">
-                <div class="stat-label">Total Pesanan</div>
-                <div class="stat-value" style="margin-top:8px;"><?= $total_pesanan ?></div>
+        <div class="stats-grid" style="margin-top:24px;">
+            <div class="premium-stat-card accent-blue">
+                <div class="icon-box" style="background:#eff6ff; color:#3b82f6;"><i class="fas fa-file-invoice"></i></div>
+                <span class="label">Total Pesanan</span>
+                <span class="value"><?= $total_pesanan ?></span>
             </div>
-            <div class="stat-card" style="border:2px solid var(--gold);">
-                <div class="stat-label">Total Volume</div>
-                <div class="stat-value" style="margin-top:8px;"><?= number_format($total_volume, 0, ',', '.') ?> m3</div>
+            <div class="premium-stat-card accent-orange">
+                <div class="icon-box" style="background:#fffbeb; color:#f59e0b;"><i class="fas fa-truck-ramp-box"></i></div>
+                <span class="label">Total Volume</span>
+                <span class="value"><?= number_format($total_volume, 0, ',', '.') ?> m³</span>
             </div>
-            <div class="stat-card" style="border:2px solid var(--green-mid);">
-                <div class="stat-label">Total Nilai</div>
-                <div class="stat-value" style="margin-top:8px; font-size:20px;"><?= formatRupiah($total_nilai) ?></div>
+            <div class="premium-stat-card accent-green">
+                <div class="icon-box" style="background:#f0fdf4; color:#10b981;"><i class="fas fa-hand-holding-dollar"></i></div>
+                <span class="label">Total Nilai</span>
+                <span class="value" style="font-size:24px;"><?= formatRupiah($total_nilai) ?></span>
             </div>
         </div>
 

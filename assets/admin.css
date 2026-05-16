@@ -466,11 +466,12 @@ input:checked + .slider:before { transform: translateX(22px); }
 }
 @media(max-width:900px) {
     .mobile-nav-toggle { display: flex; }
-    .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
+    .sidebar { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .sidebar.show { transform: translateX(0); }
     .mobile-overlay.show { display: block; opacity: 1; }
-    .main-content { margin-left: 0; padding: 24px; padding-top: 80px; }
-    .modal-backdrop { left: 0; } /* sidebar hidden on mobile, backdrop covers full screen */
+    .top-navbar { left: 0; padding: 0 16px; }
+    .main-content { margin-left: 0 !important; padding: 20px; padding-top: 90px; }
+    .modal-backdrop { left: 0; }
 }
 
 @media print {

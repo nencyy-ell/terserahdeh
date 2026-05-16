@@ -275,6 +275,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             <?php endif; ?>
 
+            <?php if (!empty($_SESSION['info_msg'])): ?>
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+                    <i class="fas fa-info-circle"></i>
+                    <span><?= htmlspecialchars($_SESSION['info_msg']) ?></span>
+                </div>
+                <?php unset($_SESSION['info_msg']); ?>
+            <?php endif; ?>
+
             <form method="POST">
                 <div class="form-group">
                     <label>Username / Email</label>
@@ -298,7 +306,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="checkbox" id="showPass">
                         <span>Tampilkan Password</span>
                     </label>
-                    <a href="forgot-password.php" class="forgot-link">Lupa Password?</a>
+                    <span class="forgot-link" style="cursor:default; color:#94a3b8; font-size:12px;" title="Hubungi admin/superadmin untuk reset password Anda">
+                        <i class="fas fa-info-circle"></i> Lupa password? Hubungi Admin
+                    </span>
                 </div>
 
                 <button type="submit" class="btn-login">Login Sekarang</button>

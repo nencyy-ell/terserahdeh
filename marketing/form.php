@@ -27,6 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'jenis_proyek'    => sanitize($conn, $_POST['jenis_proyek']),
         'status_proyek'   => sanitize($conn, $_POST['status_proyek']),
         'estimasi_volume' => floatval($_POST['estimasi_volume'] ?? 0),
+        'mutu_beton'      => sanitize($conn, $_POST['mutu_beton'] ?? ''),
+        'volume_pasti'    => floatval($_POST['volume_pasti'] ?? 0),
         'contact_person'  => sanitize($conn, $_POST['contact_person']),
         'wilayah'         => sanitize($conn, $_POST['wilayah']),
         'jenis_aktivitas' => sanitize($conn, $_POST['jenis_aktivitas']),
@@ -38,8 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'tanggal'         => sanitize($conn, $_POST['tanggal']),
     ];
 
-    $sql = "INSERT INTO marketing_reports (nama_marketing,nama_kontraktor,nama_proyek,alamat_proyek,jenis_proyek,status_proyek,estimasi_volume,contact_person,wilayah,jenis_aktivitas,jam_mulai,jam_selesai,lat,lng,hasil_promosi,tanggal, foto) 
-            VALUES ('{$data['nama_marketing']}','{$data['nama_kontraktor']}','{$data['nama_proyek']}','{$data['alamat_proyek']}','{$data['jenis_proyek']}','{$data['status_proyek']}',{$data['estimasi_volume']},'{$data['contact_person']}','{$data['wilayah']}','{$data['jenis_aktivitas']}','{$data['jam_mulai']}','{$data['jam_selesai']}',{$data['lat']},{$data['lng']},'{$data['hasil_promosi']}','{$data['tanggal']}', '$nama_file_foto')";
+    // Mutu & volume hanya wajib jika status Deal
+    $mutu_sql  = $data['mutu_beton']   ? "'{$data['mutu_beton']}'"  : 'NULL';
+    $volp_sql  = $data['volume_pasti'] > 0 ? $data['volume_pasti'] : 'NULL';
+
+    $sql = "INSERT INTO marketing_reports (nama_marketing,nama_kontraktor,nama_proyek,alamat_proyek,jenis_proyek,status_proyek,estimasi_volume,mutu_beton,volume_pasti,contact_person,wilayah,jenis_aktivitas,jam_mulai,jam_selesai,lat,lng,hasil_promosi,tanggal,foto) 
+            VALUES ('{$data['nama_marketing']}','{$data['nama_kontraktor']}','{$data['nama_proyek']}','{$data['alamat_proyek']}','{$data['jenis_proyek']}','{$data['status_proyek']}',{$data['estimasi_volume']},$mutu_sql,$volp_sql,'{$data['contact_person']}','{$data['wilayah']}','{$data['jenis_aktivitas']}','{$data['jam_mulai']}','{$data['jam_selesai']}',{$data['lat']},{$data['lng']},'{$data['hasil_promosi']}','{$data['tanggal']}','$nama_file_foto')";
 
     if ($conn->query($sql)) {
         $action = "Mengirim laporan marketing proyek: " . $data['nama_proyek'];
@@ -66,8 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <style>
         .admin-layout { width: 100%; max-width: 100%; }
-        .main-content { width: 100%; padding: 15px; box-sizing: border-box; }
-        .full-card { width: 100%; background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 20px; box-sizing: border-box; }
+        .main-content { width: 100%; padding: 15px 20px; box-sizing: border-box; }
+        .form-center-wrap { max-width: 1250px; margin: 0 auto; }
+        .full-card { width: 100%; background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); padding: 24px; box-sizing: border-box; }
         .section-title { border-left: 5px solid #f39c12; padding-left: 15px; margin-bottom: 20px; color: #333; font-weight: bold; }
         hr { border: 0; border-top: 1px solid #eee; margin: 30px 0; }
         #map { height: 350px; width: 100%; border-radius: 8px; border: 1px solid #ddd; }
@@ -85,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <a href="index.php" class="btn-back"><i class="fas fa-arrow-left"></i> Kembali</a>
             <?php endif; ?>
         </div>
+        <div class="form-center-wrap">
         <div class="page-header"><h1>Form Track Marketing</h1></div>
 
         <?php if (isset($_GET['saved'])): ?>
@@ -109,14 +117,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Status *</label>
+                       <div class="form-group"><label>Status *</label>
                         <div class="radio-group">
                             <?php foreach(['Follow Up','Nego','Deal','Loss'] as $s): ?>
-                            <label class="radio-item"><input type="radio" name="status_proyek" value="<?= $s ?>" required> <?= $s ?></label>
+                            <label class="radio-item">
+                                <input type="radio" name="status_proyek" value="<?= $s ?>" required onchange="toggleDealFields(this.value)">
+                                <?= $s ?>
+                            </label>
                             <?php endforeach; ?>
                         </div>
                     </div>
-                    <div class="form-group"><label>Estimasi Volume (m&sup3;) *</label><input type="number" name="estimasi_volume" min="0"></div>
+                    <div class="form-group"><label>Estimasi Volume (m&sup3;)</label><input type="number" name="estimasi_volume" min="0" step="0.01"></div>
+
+                    <!-- FIELD DEAL: hanya muncul saat status = Deal -->
+                    <div id="dealFields" style="display:none; background:#f0fdf4; border:2px solid #bbf7d0; border-radius:10px; padding:16px; margin-top:8px;">
+                        <div style="font-size:13px; font-weight:800; color:#065f46; margin-bottom:14px; display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-handshake" style="color:#16a34a;"></i>
+                            Detail Deal — Wajib diisi untuk notifikasi pesanan
+                        </div>
+
+                        <?php
+                        $prod_mkt = $conn->query("SELECT kode, nama FROM products WHERE is_active=1 ORDER BY kode");
+                        ?>
+                        <div class="form-group" style="margin-bottom:14px;">
+                            <label style="color:#065f46; font-weight:700;">Mutu / Tipe Beton yang Disepakati *</label>
+                            <select name="mutu_beton" id="mutu_beton_sel">
+                                <option value="">-- Pilih Mutu Beton --</option>
+                                <?php while($pm = $prod_mkt->fetch_assoc()): ?>
+                                <option value="<?= $pm['kode'] ?>"><?= $pm['kode'] ?> — <?= htmlspecialchars($pm['nama']) ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="color:#065f46; font-weight:700;">Volume Pasti (m³) *</label>
+                            <input type="number" name="volume_pasti" id="volume_pasti_inp" min="0" step="0.01" placeholder="Contoh: 120.5">
+                            <p class="form-note" style="color:#16a34a;">Volume yang sudah disepakati dengan kontraktor. Akan otomatis mengisi form pesanan.</p>
+                        </div>
+                    </div>
                     <div class="form-group"><label>Contact Person *</label><input type="text" name="contact_person" required></div>
                     <div class="form-group"><label>Tanggal *</label><input type="date" name="tanggal" value="<?= date('Y-m-d') ?>" required></div>
                 </div>
@@ -174,11 +211,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
         </form>
+        </div><!-- /form-center-wrap -->
     </main>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
+// Toggle field Deal
+function toggleDealFields(status) {
+    const box   = document.getElementById('dealFields');
+    const mutu  = document.getElementById('mutu_beton_sel');
+    const volp  = document.getElementById('volume_pasti_inp');
+    if (status === 'Deal') {
+        box.style.display  = 'block';
+        mutu.required      = true;
+        volp.required      = true;
+    } else {
+        box.style.display  = 'none';
+        mutu.required      = false;
+        volp.required      = false;
+    }
+}
+
 const map = L.map('map').setView([-6.200000, 106.816666], 13); 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 let marker = L.marker([-6.200000, 106.816666], { draggable: true }).addTo(map);

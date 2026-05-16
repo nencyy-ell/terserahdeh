@@ -1,6 +1,12 @@
 <?php
 require "includes/config.php";
 
+// Opsi A: Forgot password dinonaktifkan.
+// Reset password dilakukan oleh Admin/Superadmin via halaman Manajemen User.
+$_SESSION['info_msg'] = "Fitur lupa password tidak tersedia. Hubungi Admin atau Superadmin untuk mereset password Anda.";
+header("Location: " . BASE_URL . "/login.php");
+exit();
+
 if (isLoggedIn()) {
     redirect('/dashboard.php');
 }

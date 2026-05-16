@@ -152,10 +152,9 @@ if (!$p) redirect('/penjualan/index.php');
                 </div>
                 <div style="flex:1; text-align:center;">
                     <h2 style="color:#0a4b49; font-style:italic; font-size:20px; margin:0; font-weight:800; white-space:nowrap;">PT. PRAMBANAN BETON INDONESIA</h2>
-                    <p style="font-size:12px; margin:2px 0; color:#000;">Jl. Moch Seruji No. 331 Dusun Krajan</p>
-                    <p style="font-size:12px; margin:2px 0; color:#000;">Desa Gambirono, Kecamatan Bangsalsari</p>
-                    <p style="font-size:12px; margin:2px 0; color:#000;">Kab. Jember Jawa Timur 68154</p>
-                    <p style="font-size:12px; margin:2px 0; color:#000;">Indonesia</p>
+                    <p style="font-size:12px; margin:2px 0; color:#000;">Jalan Moh Seruji No 331</p>
+                    <p style="font-size:12px; margin:2px 0; color:#000;">Kel. Gambirono Kec. Bangsalsari</p>
+                    <p style="font-size:12px; margin:2px 0; color:#000;">Kabupaten Jember - Jawa Timur</p>
                 </div>
                 <div style="flex:0 0 25%; text-align:right;">
                     <!-- empty space for balance -->
