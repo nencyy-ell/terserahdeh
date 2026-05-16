@@ -1,98 +1,39 @@
-<div class="top-navbar">
-    <div style="font-size: 13px; color: var(--text-muted); font-weight: 500;">
-        <i class="fas fa-circle" style="color: #22c55e; font-size: 8px; margin-right: 6px;"></i>
-        Terhubung ke Server
-    </div>
-    <div class="user-profile" style="position:relative;">
-        <div style="text-align: right;">
-            <div style="font-size: 14px; font-weight: 600; color: var(--text);"><?= htmlspecialchars($_SESSION['admin_name']) ?></div>
-            <div style="font-size: 12px; color: var(--text-muted);"><?= ucfirst($_SESSION['admin_role']) ?></div>
-        </div>
-        <div class="user-avatar" id="navProfileBtn" style="background: #e2e8f0; color: #475569; cursor:pointer;" onclick="toggleProfileMenu()">
-            <i class="fas fa-user-circle"></i>
-        </div>
+<?php
+// Detect current page: use router's global var (Vercel) or fallback to PHP_SELF (XAMPP)
+$current = isset($GLOBALS['_current_page']) ? $GLOBALS['_current_page'] : basename($_SERVER['PHP_SELF'], '.php');
+?>
+<nav class="navbar" id="navbar">
+  <div class="nav-container">
+    <a href="/" class="nav-brand">
+      <div class="logo-wrapper">
+        <img src="assets/images/logo.png" alt="Logo Prambanan Beton" class="logo-img" style="height:100px;width:auto;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(249,168,37,0.3));">
+      </div>
+    </a>
 
-        <!-- Dropdown Menu -->
-        <div id="navProfileMenu" style="
-            display:none; position:absolute; top:50px; right:0;
-            background:var(--white); border:1px solid var(--border);
-            border-radius:var(--radius-md); box-shadow:var(--shadow-lg);
-            min-width:200px; z-index:9999; overflow:hidden;
-            animation: slideUp 0.2s ease-out;
-        ">
-            <div style="padding:14px 16px; border-bottom:1px solid var(--border); background:var(--bg);">
-                <div style="font-size:13px; font-weight:700; color:var(--green-dark);"><?= htmlspecialchars($_SESSION['admin_name']) ?></div>
-                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;"><?= ucfirst($_SESSION['admin_role']) ?></div>
-            </div>
-            <a href="#" onclick="openGantiPwModal(); toggleProfileMenu(); return false;"
-               style="display:flex; align-items:center; gap:10px; padding:12px 16px; text-decoration:none; color:var(--text); font-size:13px; font-weight:600; transition:background .2s;"
-               onmouseover="this.style.background='var(--green-light)'" onmouseout="this.style.background='transparent'">
-                <i class="fas fa-key" style="color:var(--gold); width:16px;"></i> Ganti Password
-            </a>
-            <a href="<?= BASE_URL ?>/logout.php"
-               style="display:flex; align-items:center; gap:10px; padding:12px 16px; text-decoration:none; color:#991b1b; font-size:13px; font-weight:600; border-top:1px solid var(--border); transition:background .2s;"
-               onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
-                <i class="fas fa-sign-out-alt" style="width:16px;"></i> Logout
-            </a>
-        </div>
-    </div>
-</div>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+      <span></span><span></span><span></span>
+    </button>
 
-<!-- MODAL GANTI PASSWORD (self-service) -->
-<div class="modal-backdrop" id="modalGantiPw">
-<div class="modal" style="max-width:420px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <h3 style="margin-bottom:0;"><i class="fas fa-key" style="color:var(--gold);"></i> Ganti Password</h3>
-        <button class="modal-close" onclick="document.getElementById('modalGantiPw').classList.remove('open')">×</button>
-    </div>
-    <form method="POST" action="<?= BASE_URL ?>/pengaturan/ganti-password.php">
-        <div class="form-group">
-            <label>Password Saat Ini *</label>
-            <input type="password" name="pw_lama" required placeholder="••••••••">
-        </div>
-        <div class="form-group">
-            <label>Password Baru *</label>
-            <input type="password" name="pw_baru" required placeholder="Min. 6 karakter" minlength="6">
-        </div>
-        <div class="form-group">
-            <label>Konfirmasi Password Baru *</label>
-            <input type="password" name="pw_konfirm" required placeholder="••••••••">
-            <p class="form-note">Password baru minimal 6 karakter.</p>
-        </div>
-        <div style="display:flex;gap:12px;justify-content:flex-end;">
-            <button type="button" class="btn btn-outline" onclick="document.getElementById('modalGantiPw').classList.remove('open')">Batal</button>
-            <button type="submit" class="btn btn-green"><i class="fas fa-save"></i> Simpan</button>
-        </div>
-    </form>
-</div>
-</div>
-
-<script>
-function toggleProfileMenu() {
-    const menu = document.getElementById('navProfileMenu');
-    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-}
-function openGantiPwModal() {
-    document.getElementById('modalGantiPw').classList.add('open');
-}
-// Tutup dropdown kalau klik di luar
-document.addEventListener('click', function(e) {
-    const btn  = document.getElementById('navProfileBtn');
-    const menu = document.getElementById('navProfileMenu');
-    if (menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
-        menu.style.display = 'none';
-    }
-});
-// Tampilkan pesan ganti pw berhasil jika ada session
-<?php if (!empty($_SESSION['pw_success'])): ?>
-document.addEventListener('DOMContentLoaded', function() {
-    alert('✅ <?= $_SESSION['pw_success'] ?>');
-});
-<?php unset($_SESSION['pw_success']); endif; ?>
-<?php if (!empty($_SESSION['pw_error'])): ?>
-document.addEventListener('DOMContentLoaded', function() {
-    alert('❌ <?= $_SESSION['pw_error'] ?>');
-    openGantiPwModal();
-});
-<?php unset($_SESSION['pw_error']); endif; ?>
-</script>
+<ul class="nav-links" id="navLinks">
+  <li><a href="/" class="nav-link <?= $current=='index'?'active':'' ?>">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Beranda
+  </a></li>
+  <li><a href="/profil" class="nav-link <?= $current=='tentang'?'active':'' ?>">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    Tentang Kami
+  </a></li>
+  <li><a href="/layanan" class="nav-link <?= $current=='produk'?'active':'' ?>">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+    Produk
+  </a></li>
+  <li><a href="/proyek" class="nav-link <?= $current=='portofolio'?'active':'' ?>">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    Portofolio
+  </a></li>
+  <li><a href="/hubungi" class="nav-link <?= $current=='kontak'?'active':'' ?>">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.07 1.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.36-.36a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+    Kontak
+  </a></li>
+</ul>  </div>
+</nav>
